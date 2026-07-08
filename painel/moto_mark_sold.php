@@ -143,12 +143,12 @@ include __DIR__ . '/../inc/header.php';
           </div>
           <div class="field mb-4">
             <label>Telefone / WhatsApp</label>
-            <input type="text" name="cliente_telefone" placeholder="(27) 99999-9999">
+            <input type="text" name="cliente_telefone" id="cliente_telefone" placeholder="(27) 99999-9999" inputmode="numeric" maxlength="16" autocomplete="off">
           </div>
         </div>
         <div class="field mb-4">
-          <label>CPF / Documento <span class="text-muted" style="font-weight:500;">(opcional)</span></label>
-          <input type="text" name="cliente_doc" placeholder="000.000.000-00">
+          <label>CPF <span class="text-muted" style="font-weight:500;">(opcional)</span></label>
+          <input type="text" name="cliente_doc" id="cliente_doc" placeholder="000.000.000-00" inputmode="numeric" maxlength="14" autocomplete="off">
         </div>
         <div class="field mb-4">
           <label>Observação <span class="text-muted" style="font-weight:500;">(opcional)</span></label>
@@ -174,6 +174,36 @@ if (v) {
     let val = e.target.value.replace(/\D/g, '');
     val = (val / 100).toFixed(2);
     e.target.value = Number(val).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  });
+}
+
+// Máscara de telefone: (XX) XXXXX-XXXX
+const tel = document.getElementById('cliente_telefone');
+if (tel) {
+  tel.addEventListener('input', e => {
+    let d = e.target.value.replace(/\D/g, '').slice(0, 11);
+    let out = d;
+    if (d.length > 6) {
+      out = '(' + d.slice(0,2) + ') ' + (d.length > 10 ? d.slice(2,7) + '-' + d.slice(7) : d.slice(2,6) + '-' + d.slice(6));
+    } else if (d.length > 2) {
+      out = '(' + d.slice(0,2) + ') ' + d.slice(2);
+    } else if (d.length > 0) {
+      out = '(' + d;
+    }
+    e.target.value = out;
+  });
+}
+
+// Máscara de CPF: 000.000.000-00
+const cpf = document.getElementById('cliente_doc');
+if (cpf) {
+  cpf.addEventListener('input', e => {
+    let d = e.target.value.replace(/\D/g, '').slice(0, 11);
+    let out = d;
+    if (d.length > 9)      out = d.slice(0,3) + '.' + d.slice(3,6) + '.' + d.slice(6,9) + '-' + d.slice(9);
+    else if (d.length > 6) out = d.slice(0,3) + '.' + d.slice(3,6) + '.' + d.slice(6);
+    else if (d.length > 3) out = d.slice(0,3) + '.' + d.slice(3);
+    e.target.value = out;
   });
 }
 </script>
