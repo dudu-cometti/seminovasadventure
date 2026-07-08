@@ -78,6 +78,10 @@ include __DIR__ . '/../inc/header.php';
         <h1 class="page-title">Usuários e permissões</h1>
         <p class="page-subtitle">Defina quem pode cadastrar, editar e excluir motos.</p>
       </div>
+      <button type="button" class="btn btn-primary" id="btnNovoUsuario">
+        <svg fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Novo usuário
+      </button>
     </div>
 
     <?php if ($flash): ?>
@@ -86,45 +90,6 @@ include __DIR__ . '/../inc/header.php';
     <?php if ($erroNovo): ?>
       <div class="alert alert-error"><span>⚠</span> <?= htmlspecialchars($erroNovo) ?></div>
     <?php endif; ?>
-
-    <!-- ===== Novo usuário ===== -->
-    <div class="card card-pad mb-4">
-      <h2 style="font-size:16px;font-weight:800;margin-bottom:4px;">Cadastrar novo usuário</h2>
-      <p class="text-sm text-muted mb-3">Crie um acesso para um consultor ou gerente da equipe.</p>
-      <form method="post">
-        <input type="hidden" name="novo_usuario" value="1">
-        <div class="form-grid form-grid-2">
-          <div class="field">
-            <label>Nome *</label>
-            <input type="text" name="nome" required placeholder="Nome completo">
-          </div>
-          <div class="field">
-            <label>E-mail *</label>
-            <input type="email" name="email" required placeholder="email@exemplo.com" autocomplete="off">
-          </div>
-        </div>
-        <div class="form-grid form-grid-2">
-          <div class="field">
-            <label>Senha *</label>
-            <input type="password" name="senha" required placeholder="mínimo 6 caracteres" autocomplete="new-password">
-          </div>
-          <div class="field">
-            <label>Função</label>
-            <select name="role" id="novoRole">
-              <option value="vendedor">Vendedor</option>
-              <option value="gerente">Gerente</option>
-            </select>
-          </div>
-        </div>
-        <div class="form-grid" id="novoPerms" style="grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); align-items:end;">
-          <label class="check"><input type="checkbox" name="can_create"><span>Cadastrar</span></label>
-          <label class="check"><input type="checkbox" name="can_edit"><span>Editar</span></label>
-          <label class="check"><input type="checkbox" name="can_delete"><span>Excluir</span></label>
-          <button class="btn btn-primary" type="submit">Criar usuário</button>
-        </div>
-        <small class="text-muted">Gerente já tem acesso total automaticamente. Você pode ajustar as permissões depois, na lista abaixo.</small>
-      </form>
-    </div>
 
     <div class="stack">
       <?php foreach ($users as $u):
@@ -184,7 +149,77 @@ include __DIR__ . '/../inc/header.php';
   </div>
 </main>
 
+<!-- ===== Modal: novo usuário ===== -->
+<div class="modal-overlay" id="modalNovoUsuario">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h2>Cadastrar novo usuário</h2>
+      <button type="button" class="modal-close" id="modalClose" aria-label="Fechar">×</button>
+    </div>
+    <p class="text-sm text-muted" style="margin:-4px 0 12px;">Crie um acesso para um consultor ou gerente da equipe.</p>
+    <form method="post">
+      <input type="hidden" name="novo_usuario" value="1">
+      <div class="form-grid form-grid-2">
+        <div class="field">
+          <label>Nome *</label>
+          <input type="text" name="nome" required placeholder="Nome completo">
+        </div>
+        <div class="field">
+          <label>E-mail *</label>
+          <input type="email" name="email" required placeholder="email@exemplo.com" autocomplete="off">
+        </div>
+      </div>
+      <div class="form-grid form-grid-2">
+        <div class="field">
+          <label>Senha *</label>
+          <input type="password" name="senha" required placeholder="mínimo 6 caracteres" autocomplete="new-password">
+        </div>
+        <div class="field">
+          <label>Função</label>
+          <select name="role" id="novoRole">
+            <option value="vendedor">Vendedor</option>
+            <option value="gerente">Gerente</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-grid" id="novoPerms" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));">
+        <label class="check"><input type="checkbox" name="can_create"><span>Cadastrar</span></label>
+        <label class="check"><input type="checkbox" name="can_edit"><span>Editar</span></label>
+        <label class="check"><input type="checkbox" name="can_delete"><span>Excluir</span></label>
+      </div>
+      <small class="text-muted" style="display:block;margin-top:8px;">Gerente já tem acesso total automaticamente. Você pode ajustar as permissões depois, na lista.</small>
+      <div class="row" style="gap:8px;margin-top:16px;">
+        <button class="btn btn-primary" type="submit">Criar usuário</button>
+        <button type="button" class="btn btn-ghost" id="modalCancel">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<style>
+  .modal-overlay{ display:none; position:fixed; inset:0; z-index:1000; background:rgba(0,0,0,.5); padding:20px; overflow-y:auto; }
+  .modal-overlay.open{ display:flex; align-items:flex-start; justify-content:center; }
+  .modal-box{ background:var(--surface); border-radius:var(--r-lg,14px); box-shadow:var(--shadow-lg,0 20px 50px rgba(0,0,0,.3)); width:100%; max-width:560px; margin:40px auto; padding:20px; }
+  .modal-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+  .modal-head h2{ font-size:18px; font-weight:800; }
+  .modal-close{ border:none; background:none; font-size:26px; line-height:1; cursor:pointer; color:var(--text-muted); padding:0 4px; }
+  .modal-close:hover{ color:var(--text); }
+</style>
+
 <script>
+  (function(){
+    const overlay = document.getElementById('modalNovoUsuario');
+    const openBtn = document.getElementById('btnNovoUsuario');
+    const closeEls = [document.getElementById('modalClose'), document.getElementById('modalCancel')];
+    function open(){ overlay.classList.add('open'); document.body.style.overflow='hidden'; }
+    function close(){ overlay.classList.remove('open'); document.body.style.overflow=''; }
+    if (openBtn) openBtn.addEventListener('click', open);
+    closeEls.forEach(el => el && el.addEventListener('click', close));
+    overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+    <?php if ($erroNovo): ?>open();<?php endif; ?>
+  })();
+
   (function(){
     const role = document.getElementById('novoRole');
     const perms = document.getElementById('novoPerms');
