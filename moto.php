@@ -86,9 +86,21 @@ $sugestoes = $stmtSug->fetchAll();
     position: relative;
     box-shadow: var(--shadow-md);
   }
+  .gallery-main::before{
+    content: "";
+    position: absolute; inset: 0;
+    background-image: var(--photo, none);
+    background-size: cover;
+    background-position: center;
+    filter: blur(22px) brightness(.6);
+    transform: scale(1.2);
+    z-index: 0;
+  }
   .gallery-main img{
+    position: relative;
+    z-index: 1;
     width: 100%; height: 100%;
-    object-fit: cover;
+    object-fit: contain;   /* foto inteira, sem cortar */
     cursor: zoom-in;
   }
   .gallery-nav{
@@ -215,7 +227,7 @@ $sugestoes = $stmtSug->fetchAll();
 
   <section class="moto-detail">
     <div>
-      <div class="gallery-main" id="galleryMain">
+      <div class="gallery-main" id="galleryMain" style="--photo:url('<?= htmlspecialchars($fotos[0]) ?>')">
         <?php if ($moto['status'] === 'reservada'): ?>
           <div class="gallery-ribbon">Reservada</div>
         <?php endif; ?>
@@ -426,7 +438,7 @@ $sugestoes = $stmtSug->fetchAll();
           ?>
           <article class="moto-card">
             <a href="<?= base_url('moto.php?id=' . $smid) ?>" style="color:inherit;display:flex;flex-direction:column;height:100%;">
-              <div class="moto-media">
+              <div class="moto-media" style="--photo:url('<?= htmlspecialchars($sFoto) ?>')">
                 <img src="<?= htmlspecialchars($sFoto) ?>" alt="<?= htmlspecialchars($sNome) ?>" loading="lazy">
               </div>
               <div class="moto-body">
@@ -454,7 +466,6 @@ $sugestoes = $stmtSug->fetchAll();
     <button type="button" class="lightbox-prev" aria-label="Anterior">‹</button>
     <img id="lbImg" src="" alt="Foto">
     <button type="button" class="lightbox-next" aria-label="Próxima">›</button>
-    <a id="lbDownload" class="lightbox-download" href="#" download>⬇ Baixar foto</a>
   </div>
 </div>
 
@@ -462,6 +473,7 @@ $sugestoes = $stmtSug->fetchAll();
 (function(){
   const fotos = <?= json_encode($fotos) ?>;
   const galleryImg = document.getElementById('galleryImg');
+  const galleryMain = document.getElementById('galleryMain');
   const counter = document.getElementById('galleryCounter');
   const thumbs = document.querySelectorAll('.gallery-thumb');
   let idx = 0;
@@ -469,6 +481,7 @@ $sugestoes = $stmtSug->fetchAll();
   function show(i){
     idx = (i + fotos.length) % fotos.length;
     galleryImg.src = fotos[idx];
+    if (galleryMain) galleryMain.style.setProperty('--photo', "url('" + fotos[idx] + "')");
     counter.textContent = (idx + 1) + ' / ' + fotos.length;
     thumbs.forEach((t, ti) => t.classList.toggle('active', ti === idx));
   }
@@ -480,13 +493,11 @@ $sugestoes = $stmtSug->fetchAll();
   const lightbox = document.getElementById('lightbox');
   const lbImg = document.getElementById('lbImg');
   const lbCounter = document.getElementById('lbCounter');
-  const lbDownload = document.getElementById('lbDownload');
   let lbIdx = 0;
 
   function lbShow(i){
     lbIdx = (i + fotos.length) % fotos.length;
     lbImg.src = fotos[lbIdx];
-    lbDownload.href = fotos[lbIdx];
     lbCounter.textContent = (lbIdx + 1) + ' / ' + fotos.length;
   }
   function lbOpen(i){ lbShow(i); lightbox.classList.add('open'); document.body.style.overflow='hidden'; }

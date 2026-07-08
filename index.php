@@ -160,7 +160,7 @@ include __DIR__ . '/inc/header.php';
         ?>
 
         <article class="moto-card">
-          <div class="moto-media" data-galeria="<?= $dataGaleria ?>" data-moto-id="<?= $mid ?>">
+          <div class="moto-media" data-galeria="<?= $dataGaleria ?>" data-moto-id="<?= $mid ?>" style="--photo:url('<?= htmlspecialchars($foto0) ?>')">
             <?php if ($m['status'] === 'reservada'): ?>
               <div class="moto-ribbon">Reservada</div>
             <?php endif; ?>
@@ -236,12 +236,6 @@ include __DIR__ . '/inc/header.php';
     <button type="button" class="lightbox-prev" aria-label="Anterior">‹</button>
     <img id="lbImg" src="" alt="Foto da moto">
     <button type="button" class="lightbox-next" aria-label="Próxima">›</button>
-    <a id="lbDownload" class="lightbox-download" href="#" download>
-      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="16" height="16" style="vertical-align:-3px;margin-right:4px">
-        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
-      </svg>
-      Baixar foto
-    </a>
   </div>
 </div>
 
@@ -251,7 +245,6 @@ include __DIR__ . '/inc/header.php';
   const lightbox = document.getElementById('lightbox');
   const lbImg = document.getElementById('lbImg');
   const lbCounter = document.getElementById('lbCounter');
-  const lbDownload = document.getElementById('lbDownload');
 
   let lbFotos = [];
   let lbIndex = 0;
@@ -271,7 +264,6 @@ include __DIR__ . '/inc/header.php';
   }
   function render(){
     lbImg.src = lbFotos[lbIndex];
-    lbDownload.href = lbFotos[lbIndex];
     lbCounter.textContent = (lbIndex + 1) + ' / ' + lbFotos.length;
   }
   function mover(delta){
@@ -328,8 +320,9 @@ include __DIR__ . '/inc/header.php';
     function syncDots(){
       dots.forEach((d, i) => d.classList.toggle('active', i === idx % dots.length));
     }
-    function next(){ idx = (idx+1) % fotos.length; img.src = fotos[idx]; syncDots(); }
-    function prev(){ idx = (idx-1+fotos.length) % fotos.length; img.src = fotos[idx]; syncDots(); }
+    function setPhoto(){ wrap.style.setProperty('--photo', "url('" + fotos[idx] + "')"); }
+    function next(){ idx = (idx+1) % fotos.length; img.src = fotos[idx]; setPhoto(); syncDots(); }
+    function prev(){ idx = (idx-1+fotos.length) % fotos.length; img.src = fotos[idx]; setPhoto(); syncDots(); }
 
     btnNext?.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); next(); });
     btnPrev?.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); prev(); });
