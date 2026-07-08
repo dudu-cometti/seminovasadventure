@@ -30,6 +30,13 @@ ensure_moto_schema($pdo); // colunas ordem / valor_a_combinar
 $whatsapp = setting_get_any($pdo, ['whatsapp_number','whatsapp','numero_whatsapp','telefone_whatsapp'], '5527999215754');
 $nomeLoja = setting_get_any($pdo, ['marketplace_nome','loja_nome','nome_loja','site_nome'], 'Adventure Motos');
 $cidade   = setting_get_any($pdo, ['marketplace_cidade','loja_cidade','cidade_loja'], 'São Silvano - ES');
+$bannerAtivo   = setting_get_any($pdo, ['banner_ativo'], '0') === '1';
+$bannerDesktop = setting_get_any($pdo, ['banner_desktop'], '');
+$bannerMobile  = setting_get_any($pdo, ['banner_mobile'], '');
+// fallback: se só uma imagem foi enviada, usa ela nos dois
+$bDesk = $bannerDesktop ?: $bannerMobile;
+$bMob  = $bannerMobile ?: $bannerDesktop;
+$temBanner = $bannerAtivo && ($bDesk || $bMob);
 
 // ===== Filtros =====
 $q       = trim($_GET['q'] ?? '');
@@ -97,10 +104,19 @@ include __DIR__ . '/inc/header.php';
 ?>
 
 <main class="container">
-  <section class="mkt-hero">
-    <h1>Sua próxima moto está aqui</h1>
-    <p>Motos seminovas selecionadas em <?= htmlspecialchars($cidade) ?>. Chame no WhatsApp e negocie direto.</p>
-  </section>
+  <?php if ($temBanner): ?>
+    <section class="mkt-banner">
+      <picture>
+        <source media="(max-width: 640px)" srcset="<?= base_url($bMob) ?>">
+        <img src="<?= base_url($bDesk) ?>" alt="<?= htmlspecialchars($nomeLoja) ?>" loading="eager">
+      </picture>
+    </section>
+  <?php else: ?>
+    <section class="mkt-hero">
+      <h1>Sua próxima moto está aqui</h1>
+      <p>Motos seminovas selecionadas em <?= htmlspecialchars($cidade) ?>. Chame no WhatsApp e negocie direto.</p>
+    </section>
+  <?php endif; ?>
 
   <section class="mkt-toolbar">
     <form method="get" class="mkt-toolbar-inner" id="filterForm">

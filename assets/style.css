@@ -373,6 +373,17 @@ h3 { font-size: 18px; }
 .card-pad-sm{ padding: var(--space-4); }
 
 /* ---------- 10. MARKETPLACE: HERO + FILTROS ---------- */
+.mkt-banner{
+  margin: var(--space-5) auto var(--space-4);
+}
+.mkt-banner picture,
+.mkt-banner img{
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--r-xl, 16px);
+  box-shadow: var(--shadow-md);
+}
 .mkt-hero{
   margin: var(--space-6) auto var(--space-4);
   text-align: center;
