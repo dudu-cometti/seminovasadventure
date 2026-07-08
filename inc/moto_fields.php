@@ -73,6 +73,22 @@ if (!function_exists('ensure_vendas_schema')) {
         created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         KEY idx_moto (moto_id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+      // Colunas extras (adiciona nas tabelas já existentes que ainda não têm)
+      $extras = [
+        'vendedor_nome'    => "VARCHAR(120) NOT NULL DEFAULT ''",
+        'cliente_nome'     => "VARCHAR(160) NOT NULL DEFAULT ''",
+        'cliente_telefone' => "VARCHAR(40) NOT NULL DEFAULT ''",
+        'cliente_doc'      => "VARCHAR(40) NOT NULL DEFAULT ''",
+        'data_venda'       => "DATE NULL",
+        'observacao'       => "TEXT NULL",
+      ];
+      foreach ($extras as $nome => $def) {
+        $c = $pdo->query("SELECT COUNT(*) FROM information_schema.COLUMNS
+          WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='vendas' AND COLUMN_NAME='$nome'")->fetchColumn();
+        if ((int)$c === 0) $pdo->exec("ALTER TABLE vendas ADD COLUMN `$nome` $def");
+      }
+
       $c = $pdo->query("SELECT COUNT(*) FROM information_schema.COLUMNS
         WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='motos' AND COLUMN_NAME='sold_at'")->fetchColumn();
       if ((int)$c === 0) {

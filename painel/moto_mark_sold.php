@@ -26,18 +26,32 @@ $erro = '';
 $sucesso = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $valor_venda = (float)str_replace(['.', ','], ['', '.'], $_POST['valor_venda'] ?? '0');
+    $valor_venda   = (float)str_replace(['.', ','], ['', '.'], $_POST['valor_venda'] ?? '0');
+    $vendedorNome  = trim($_POST['vendedor_nome'] ?? '');
+    $clienteNome   = trim($_POST['cliente_nome'] ?? '');
+    $clienteTel    = trim($_POST['cliente_telefone'] ?? '');
+    $clienteDoc    = trim($_POST['cliente_doc'] ?? '');
+    $observacao    = trim($_POST['observacao'] ?? '');
+    $dataVenda     = trim($_POST['data_venda'] ?? '');
+    // valida a data (YYYY-MM-DD); se vier vazia/errada, usa hoje
+    $d = DateTime::createFromFormat('Y-m-d', $dataVenda);
+    $dataVenda = ($d && $d->format('Y-m-d') === $dataVenda) ? $dataVenda : date('Y-m-d');
 
     if ($valor_venda <= 0) {
         $erro = 'Informe o valor da venda.';
+    } elseif ($clienteNome === '') {
+        $erro = 'Informe o nome do cliente.';
     } else {
         $pdo->beginTransaction();
         try {
-            $stmt = $pdo->prepare("INSERT INTO vendas (moto_id, vendedor_id, valor_venda) VALUES (?, ?, ?)");
-            $stmt->execute([$id, $user['id'], $valor_venda]);
+            $stmt = $pdo->prepare("INSERT INTO vendas
+                (moto_id, vendedor_id, vendedor_nome, cliente_nome, cliente_telefone, cliente_doc, valor_venda, data_venda, observacao)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$id, $user['id'], $vendedorNome, $clienteNome, $clienteTel, $clienteDoc, $valor_venda, $dataVenda, $observacao]);
 
-            $stmt = $pdo->prepare("UPDATE motos SET status = 'vendida', sold_at = NOW(), updated_at = NOW() WHERE id = ?");
-            $stmt->execute([$id]);
+            // sold_at recebe a data escolhida (meio-dia, evita fuso zerar pro dia anterior)
+            $stmt = $pdo->prepare("UPDATE motos SET status = 'vendida', sold_at = ?, updated_at = NOW() WHERE id = ?");
+            $stmt->execute([$dataVenda . ' 12:00:00', $id]);
 
             $pdo->commit();
             $sucesso = 'Venda registrada com sucesso!';
@@ -86,11 +100,42 @@ include __DIR__ . '/../inc/header.php';
           </div>
         </div>
 
-        <div class="field field-prefix mb-4">
-          <label>Valor da venda</label>
-          <span>R$</span>
-          <input type="text" name="valor_venda" id="valor_venda" required placeholder="0,00" inputmode="decimal" autofocus>
-          <small>Pode ser diferente do preço de tabela (após negociação).</small>
+        <div class="form-grid form-grid-2">
+          <div class="field field-prefix mb-4">
+            <label>Valor da venda *</label>
+            <span>R$</span>
+            <input type="text" name="valor_venda" id="valor_venda" required placeholder="0,00" inputmode="decimal" autofocus>
+            <small>Pode ser diferente do preço de tabela (após negociação).</small>
+          </div>
+          <div class="field mb-4">
+            <label>Data da venda *</label>
+            <input type="date" name="data_venda" value="<?= date('Y-m-d') ?>" max="<?= date('Y-m-d') ?>" required>
+          </div>
+        </div>
+
+        <div class="field mb-4">
+          <label>Vendedor</label>
+          <input type="text" name="vendedor_nome" value="<?= htmlspecialchars($user['nome'] ?? '') ?>" placeholder="Nome do consultor que fez a venda">
+        </div>
+
+        <h2 style="font-size:15px;font-weight:800;margin:4px 0 8px;padding-top:8px;border-top:1px solid var(--border-soft);">Dados do cliente</h2>
+        <div class="form-grid form-grid-2">
+          <div class="field mb-4">
+            <label>Nome do cliente *</label>
+            <input type="text" name="cliente_nome" required placeholder="Nome de quem comprou">
+          </div>
+          <div class="field mb-4">
+            <label>Telefone / WhatsApp</label>
+            <input type="text" name="cliente_telefone" placeholder="(27) 99999-9999">
+          </div>
+        </div>
+        <div class="field mb-4">
+          <label>CPF / Documento <span class="text-muted" style="font-weight:500;">(opcional)</span></label>
+          <input type="text" name="cliente_doc" placeholder="000.000.000-00">
+        </div>
+        <div class="field mb-4">
+          <label>Observação <span class="text-muted" style="font-weight:500;">(opcional)</span></label>
+          <textarea name="observacao" rows="3" placeholder="Ex: forma de pagamento, troca envolvida, garantia combinada..."></textarea>
         </div>
 
         <div class="row" style="gap:8px;">

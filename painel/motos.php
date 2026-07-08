@@ -195,6 +195,10 @@ include __DIR__ . '/../inc/header.php';
                     <?php if ($m['status'] === 'disponivel' && user_can('edit')): ?>
                       <a class="btn btn-sm btn-success"
                          href="<?= base_url('painel/moto_mark_sold.php?id=' . (int)$m['id']) ?>">Vender</a>
+                    <?php elseif ($m['status'] === 'vendida' && user_can('edit')): ?>
+                      <a class="btn btn-sm btn-ghost"
+                         href="<?= base_url('painel/moto_unsell.php?id=' . (int)$m['id']) ?>"
+                         title="Reverter a venda (exige senha de gerente)">Cancelar venda</a>
                     <?php endif; ?>
 
                     <?php if (user_can('delete')): ?>
