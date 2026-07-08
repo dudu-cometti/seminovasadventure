@@ -1301,19 +1301,22 @@ body.chrome-hidden .mkt-toolbar{
 
 .mcard-zap{
   margin-top: auto;
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  background: var(--brand-600); color: #fff;
-  font-weight: 800; font-size: 15px;
-  padding: 11px 14px; border-radius: var(--r-sm);
+  align-self: flex-start;
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  background: var(--wa, #25d366); color: #fff;
+  font-weight: 700; font-size: 13.5px;
+  padding: 8px 14px; border-radius: var(--r-full);
   transition: background var(--t-fast);
 }
-.mcard-zap:hover{ background: var(--brand-700); color: #fff; }
+.mcard-zap:hover{ background: var(--wa-dark, #1da851); color: #fff; }
+.mcard-zap svg{ width: 16px; height: 16px; }
 
 @media (max-width: 640px){
   .trust-strip-inner{ font-size: 12px; gap: 6px 16px; }
-  .grid-motos{ grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
-  .mcard-name{ font-size: 18px; }
-  .mcard-price{ font-size: 22px; }
+  .grid-motos{ grid-template-columns: 1fr; gap: 14px; }  /* uma moto por linha */
+  .mcard-name{ font-size: 26px; }
+  .mcard-price{ font-size: 30px; }
+  .mcard-photo{ aspect-ratio: 16 / 10; }
 }
 @media (max-width: 520px){
   .btn-zap-head span{ display: none; }        /* no celular, só o ícone */
