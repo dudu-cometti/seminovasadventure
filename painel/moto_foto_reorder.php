@@ -18,27 +18,30 @@ ensure_moto_schema($pdo);
 
 $moto_id = (int)($_GET['moto_id'] ?? 0);
 $foto_id = (int)($_GET['foto_id'] ?? 0);
+$dir     = ($_GET['dir'] ?? '') === 'depois' ? 'depois' : 'antes';
 
 if ($moto_id <= 0 || $foto_id <= 0) {
   http_response_code(400);
   exit('Parâmetros inválidos.');
 }
 
-$stmt = $pdo->prepare("SELECT id FROM moto_fotos WHERE id=? AND moto_id=? LIMIT 1");
-$stmt->execute([$foto_id, $moto_id]);
+// Sequência atual
+$stmt = $pdo->prepare("SELECT id FROM moto_fotos WHERE moto_id=? ORDER BY ordem ASC, id ASC");
+$stmt->execute([$moto_id]);
+$ids = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
 
-if (!$stmt->fetch()) {
+$pos = array_search($foto_id, $ids, true);
+if ($pos === false) {
   http_response_code(404);
   exit('Foto não encontrada para esta moto.');
 }
 
-// Move a foto escolhida para o início da sequência (posição 1 = capa)
-$stmt = $pdo->prepare("SELECT id FROM moto_fotos WHERE moto_id=? ORDER BY ordem ASC, id ASC");
-$stmt->execute([$moto_id]);
-$ids = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
-$ids = array_values(array_filter($ids, fn($v) => $v !== $foto_id));
-array_unshift($ids, $foto_id);
-moto_fotos_aplicar_ordem($pdo, $moto_id, $ids);
+$alvo = $dir === 'depois' ? $pos + 1 : $pos - 1;
+if ($alvo >= 0 && $alvo < count($ids)) {
+  // troca de lugar com o vizinho
+  [$ids[$pos], $ids[$alvo]] = [$ids[$alvo], $ids[$pos]];
+  moto_fotos_aplicar_ordem($pdo, $moto_id, $ids);
+}
 
 header('Location: ' . base_url('painel/moto_form.php?id=' . $moto_id));
 exit;

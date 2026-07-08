@@ -56,7 +56,7 @@ $avatarLetter = mb_strtoupper(mb_substr(trim($user['nome'] ?? 'U'), 0, 1, 'UTF-8
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
   <link rel="icon" href="<?= base_url('favicon.ico') ?>" type="image/x-icon">
-  <link rel="stylesheet" href="<?= base_url('assets/style.css?v=2006') ?>">
+  <link rel="stylesheet" href="<?= base_url('assets/style.css?v=2007') ?>">
 </head>
 <body>
 

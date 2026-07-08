@@ -5,6 +5,63 @@
  * (function_exists evita erro caso algo já tenha definido.)
  */
 
+/**
+ * Garante que as colunas novas existem no banco (auto-migração leve).
+ * - moto_fotos.ordem        -> sequência das fotos (0 = capa)
+ * - motos.valor_a_combinar  -> "sob consulta / valor a negociar"
+ * Roda só uma vez por request e ignora erros silenciosamente.
+ */
+if (!function_exists('ensure_moto_schema')) {
+  function ensure_moto_schema($pdo) {
+    static $done = false;
+    if ($done) return;
+    $done = true;
+    try {
+      $col = $pdo->query("SELECT COUNT(*) FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='moto_fotos' AND COLUMN_NAME='ordem'")->fetchColumn();
+      if ((int)$col === 0) {
+        $pdo->exec("ALTER TABLE moto_fotos ADD COLUMN ordem INT NOT NULL DEFAULT 0");
+        // Inicializa a ordem respeitando a capa atual (capa primeiro, depois id)
+        $motoIds = $pdo->query("SELECT DISTINCT moto_id FROM moto_fotos")->fetchAll(PDO::FETCH_COLUMN);
+        $sel = $pdo->prepare("SELECT id FROM moto_fotos WHERE moto_id=? ORDER BY is_cover DESC, id ASC");
+        $upd = $pdo->prepare("UPDATE moto_fotos SET ordem=? WHERE id=?");
+        foreach ($motoIds as $mid) {
+          $sel->execute([$mid]);
+          $o = 0;
+          foreach ($sel->fetchAll(PDO::FETCH_COLUMN) as $fid) $upd->execute([$o++, $fid]);
+        }
+      }
+      $col2 = $pdo->query("SELECT COUNT(*) FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='motos' AND COLUMN_NAME='valor_a_combinar'")->fetchColumn();
+      if ((int)$col2 === 0) {
+        $pdo->exec("ALTER TABLE motos ADD COLUMN valor_a_combinar TINYINT(1) NOT NULL DEFAULT 0");
+      }
+    } catch (Throwable $e) { /* ignora */ }
+  }
+}
+
+/**
+ * Grava uma sequência de fotos (array de ids na ordem desejada):
+ * renumera ordem = 0,1,2... e marca a primeira como capa (is_cover=1).
+ */
+if (!function_exists('moto_fotos_aplicar_ordem')) {
+  function moto_fotos_aplicar_ordem($pdo, $moto_id, array $idsEmOrdem) {
+    $upd = $pdo->prepare("UPDATE moto_fotos SET ordem=?, is_cover=? WHERE id=? AND moto_id=?");
+    foreach (array_values($idsEmOrdem) as $i => $fid) {
+      $upd->execute([$i, $i === 0 ? 1 : 0, (int)$fid, $moto_id]);
+    }
+  }
+}
+
+/** Renumera as fotos da moto pela ordem atual (ordem, id) e fixa a capa. */
+if (!function_exists('moto_fotos_reindex')) {
+  function moto_fotos_reindex($pdo, $moto_id) {
+    $stmt = $pdo->prepare("SELECT id FROM moto_fotos WHERE moto_id=? ORDER BY ordem ASC, id ASC");
+    $stmt->execute([$moto_id]);
+    moto_fotos_aplicar_ordem($pdo, $moto_id, $stmt->fetchAll(PDO::FETCH_COLUMN));
+  }
+}
+
 if (!function_exists('yn')) {
   function yn($v) {
     $v = trim((string)$v);

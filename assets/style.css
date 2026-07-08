@@ -606,6 +606,12 @@ body.chrome-hidden .mkt-toolbar{
   letter-spacing: -.02em;
   color: var(--text);
 }
+.moto-price-consulta{
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -.01em;
+  color: var(--brand-600);
+}
 
 .moto-actions{
   display: flex; gap: 8px;

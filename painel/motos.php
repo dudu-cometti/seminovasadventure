@@ -1,7 +1,9 @@
 <?php
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../inc/auth.php';
+require_once __DIR__ . '/../inc/moto_fields.php';
 require_login();
+ensure_moto_schema($pdo);
 
 $user = current_user();
 $page_title = 'Motos cadastradas';
@@ -44,7 +46,7 @@ $where_sql = $where ? ("WHERE " . implode(" AND ", $where)) : "";
 
 $sql = "
   SELECT m.*, u.nome AS nome_criador,
-         (SELECT caminho FROM moto_fotos WHERE moto_id=m.id ORDER BY is_cover DESC, id ASC LIMIT 1) AS capa
+         (SELECT caminho FROM moto_fotos WHERE moto_id=m.id ORDER BY ordem ASC, id ASC LIMIT 1) AS capa
   FROM motos m
   JOIN users u ON u.id = m.created_by
   $where_sql

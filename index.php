@@ -23,7 +23,9 @@ function setting_get_any($pdo, $keys, $default=''){
 }
 function format_money($v){ return 'R$ ' . number_format((float)$v, 2, ',', '.'); }
 
+require_once __DIR__ . '/inc/moto_fields.php';
 ensure_settings_table($pdo);
+ensure_moto_schema($pdo); // colunas ordem / valor_a_combinar
 
 $whatsapp = setting_get_any($pdo, ['whatsapp_number','whatsapp','numero_whatsapp','telefone_whatsapp'], '5527999215754');
 $nomeLoja = setting_get_any($pdo, ['marketplace_nome','loja_nome','nome_loja','site_nome'], 'Adventure Motos');
@@ -80,7 +82,7 @@ if ($motos) {
   $stmtF = $pdo->prepare("
     SELECT moto_id, caminho FROM moto_fotos
     WHERE moto_id IN ($place)
-    ORDER BY moto_id ASC, is_cover DESC, id ASC
+    ORDER BY moto_id ASC, ordem ASC, id ASC
   ");
   $stmtF->execute($ids);
   foreach ($stmtF as $f) {
@@ -204,10 +206,14 @@ include __DIR__ . '/inc/header.php';
               <div class="moto-spec"><b>Marca</b><?= htmlspecialchars($m['modelo']) ?></div>
             </div>
 
-            <div class="moto-price">
-              <span class="moto-price-currency">R$</span>
-              <span class="moto-price-value"><?= number_format((float)$m['valor'], 2, ',', '.') ?></span>
-            </div>
+            <?php if (!empty($m['valor_a_combinar']) || (float)$m['valor'] <= 0): ?>
+              <div class="moto-price moto-price-consulta">Valor a combinar</div>
+            <?php else: ?>
+              <div class="moto-price">
+                <span class="moto-price-currency">R$</span>
+                <span class="moto-price-value"><?= number_format((float)$m['valor'], 2, ',', '.') ?></span>
+              </div>
+            <?php endif; ?>
 
             <div class="moto-actions">
               <a class="btn btn-whatsapp" data-wa="1" data-moto-id="<?= $mid ?>" target="_blank" rel="noopener" href="<?= htmlspecialchars($wa_link) ?>">

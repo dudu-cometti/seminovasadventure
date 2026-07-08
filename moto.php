@@ -1,6 +1,8 @@
 <?php
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/inc/auth.php';
+require_once __DIR__ . '/inc/moto_fields.php';
+ensure_moto_schema($pdo); // colunas ordem / valor_a_combinar
 
 function setting_get_any($pdo, $keys, $default=''){
   try {
@@ -37,7 +39,7 @@ if (!$moto || !in_array($moto['status'], ['disponivel','reservada'])) {
   exit;
 }
 
-$stmtF = $pdo->prepare("SELECT caminho FROM moto_fotos WHERE moto_id = ? ORDER BY is_cover DESC, id ASC");
+$stmtF = $pdo->prepare("SELECT caminho FROM moto_fotos WHERE moto_id = ? ORDER BY ordem ASC, id ASC");
 $stmtF->execute([$id]);
 $fotosRows = $stmtF->fetchAll();
 $fotos = [];
@@ -50,6 +52,7 @@ $nomeLoja = setting_get_any($pdo, ['marketplace_nome','loja_nome','nome_loja','s
 $nomeMoto = trim(($moto['titulo'] ?: $moto['modelo']) . '');
 $km = number_format((int)$moto['quilometragem'], 0, ',', '.');
 $valor = number_format((float)$moto['valor'], 2, ',', '.');
+$valorACombinar = !empty($moto['valor_a_combinar']) || (float)$moto['valor'] <= 0;
 
 $msg = "Olá, tenho interesse na moto {$nomeMoto}. Ano/modelo {$moto['ano_modelo']}, {$km} km, cor {$moto['cor']}. Ainda está disponível?";
 $wa_link = "https://wa.me/{$whatsapp}?text=" . urlencode($msg);
@@ -58,7 +61,7 @@ $page_title = $nomeMoto . ' — ' . $nomeLoja;
 
 // Outras motos sugeridas (mesma marca)
 $stmtSug = $pdo->prepare("
-  SELECT m.*, (SELECT caminho FROM moto_fotos WHERE moto_id=m.id ORDER BY is_cover DESC, id ASC LIMIT 1) AS capa
+  SELECT m.*, (SELECT caminho FROM moto_fotos WHERE moto_id=m.id ORDER BY ordem ASC, id ASC LIMIT 1) AS capa
   FROM motos m
   WHERE m.modelo = ? AND m.id != ? AND m.status IN ('disponivel','reservada')
   ORDER BY m.created_at DESC LIMIT 4
@@ -182,6 +185,12 @@ $sugestoes = $stmtSug->fetchAll();
     font-weight: 900;
     letter-spacing: -.025em;
     margin-left: 4px;
+  }
+  .price-main-consulta{
+    font-size: 26px;
+    font-weight: 900;
+    letter-spacing: -.02em;
+    color: var(--brand-600);
   }
   .spec-list{
     display: grid;
@@ -372,11 +381,16 @@ $sugestoes = $stmtSug->fetchAll();
 
         <h1><?= htmlspecialchars($nomeMoto) ?></h1>
 
+        <?php if ($valorACombinar): ?>
+          <div class="price-main price-main-consulta">Valor a combinar</div>
+          <div style="font-size:13px;color:var(--text-muted);margin:-6px 0 6px;">Fale com um consultor pelo WhatsApp para saber o valor.</div>
+        <?php else: ?>
         <div class="price-main">
           <span class="price-main-currency">R$</span>
           <span class="price-main-value"><?= $valor ?></span>
         </div>
-        <?php if ((float)($moto['valor_fipe'] ?? 0) > 0): ?>
+        <?php endif; ?>
+        <?php if (!$valorACombinar && (float)($moto['valor_fipe'] ?? 0) > 0): ?>
           <div style="font-size:13px;color:var(--text-muted);margin:-6px 0 6px;">
             Tabela FIPE: R$ <?= number_format((float)$moto['valor_fipe'], 2, ',', '.') ?>
             <?php
@@ -444,10 +458,14 @@ $sugestoes = $stmtSug->fetchAll();
               <div class="moto-body">
                 <div class="moto-title"><?= htmlspecialchars($sNome) ?></div>
                 <div class="text-sm text-muted"><?= htmlspecialchars($s['ano_modelo']) ?> · <?= $sKm ?> km</div>
-                <div class="moto-price">
-                  <span class="moto-price-currency">R$</span>
-                  <span class="moto-price-value"><?= number_format((float)$s['valor'], 2, ',', '.') ?></span>
-                </div>
+                <?php if (!empty($s['valor_a_combinar']) || (float)$s['valor'] <= 0): ?>
+                  <div class="moto-price moto-price-consulta">Valor a combinar</div>
+                <?php else: ?>
+                  <div class="moto-price">
+                    <span class="moto-price-currency">R$</span>
+                    <span class="moto-price-value"><?= number_format((float)$s['valor'], 2, ',', '.') ?></span>
+                  </div>
+                <?php endif; ?>
               </div>
             </a>
           </article>

@@ -32,6 +32,7 @@ function moto_tem_capa($pdo, $moto_id) {
 
 // Helpers compartilhados dos campos da ficha (yn, opt_val, field_yn, etc.)
 require_once __DIR__ . '/../inc/moto_fields.php';
+ensure_moto_schema($pdo); // garante colunas ordem / valor_a_combinar
 
 if ($editando) {
   $stmt = $pdo->prepare("SELECT * FROM motos WHERE id=?");
@@ -41,7 +42,7 @@ if ($editando) {
 } else {
   $moto = array_merge([
     'titulo' => '', 'modelo' => '', 'ano_modelo' => '',
-    'quilometragem' => 0, 'cor' => '', 'valor' => 0, 'valor_fipe' => 0,
+    'quilometragem' => 0, 'cor' => '', 'valor' => 0, 'valor_a_combinar' => 0, 'valor_fipe' => 0,
     'descricao' => '', 'status' => 'disponivel',
   ], moto_ficha_defaults());
 }
@@ -51,11 +52,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $marca      = trim($_POST['modelo'] ?? '');
     $ano_modelo = trim($_POST['ano_modelo'] ?? '');
     $cor        = trim($_POST['cor'] ?? '');
-    $valor      = money_to_float($_POST['valor'] ?? '0');
+    $aCombinar  = !empty($_POST['valor_a_combinar']) ? 1 : 0;
+    $valor      = $aCombinar ? 0.0 : money_to_float($_POST['valor'] ?? '0');
     $status     = $editando ? ($_POST['status'] ?? 'disponivel') : 'disponivel';
 
-    if ($marca === '' || $ano_modelo === '' || $cor === '' || $valor <= 0) {
-      throw new Exception('Preencha marca, ano/modelo, cor e valor.');
+    if ($marca === '' || $ano_modelo === '' || $cor === '') {
+      throw new Exception('Preencha marca, ano/modelo e cor.');
+    }
+    if (!$aCombinar && $valor <= 0) {
+      throw new Exception('Informe o valor de venda ou marque "Valor a combinar".');
     }
 
     // Diferencial: tags novas pra cadastrar depois
@@ -69,6 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       'quilometragem' => (int)str_replace(['.', ','], '', $_POST['quilometragem'] ?? '0'),
       'cor'           => $cor,
       'valor'         => $valor,
+      'valor_a_combinar' => $aCombinar,
       'valor_fipe'    => money_to_float($_POST['valor_fipe'] ?? '0'),
       'descricao'     => trim($_POST['descricao'] ?? ''),
     ], moto_ficha_collect($_POST));
@@ -108,9 +114,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
 
       $total = min(count($_FILES['fotos']['name']), 5);
-      $jaTemCapa = moto_tem_capa($pdo, $id);
-      $primeiraInseridaId = null;
 
+      // Novas fotos entram no fim da sequência (ordem alta) e depois reindexamos.
       for ($i = 0; $i < $total; $i++) {
         $name = $_FILES['fotos']['name'][$i] ?? '';
         $tmp  = $_FILES['fotos']['tmp_name'][$i] ?? '';
@@ -119,15 +124,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!in_array($ext, ['jpg','jpeg','png','webp'])) continue;
         $newName = 'moto_' . $id . '_' . time() . '_' . $i . '.' . $ext;
         if (move_uploaded_file($tmp, $uploadDir . $newName)) {
-          $stmt = $pdo->prepare("INSERT INTO moto_fotos (moto_id, caminho, is_cover) VALUES (?,?,0)");
-          $stmt->execute([$id, $newName]);
-          if ($primeiraInseridaId === null) $primeiraInseridaId = (int)$pdo->lastInsertId();
+          $stmt = $pdo->prepare("INSERT INTO moto_fotos (moto_id, caminho, is_cover, ordem) VALUES (?,?,0,?)");
+          $stmt->execute([$id, $newName, 1000000 + $i]);
         }
       }
-      if (!$jaTemCapa && $primeiraInseridaId) {
-        $pdo->prepare("UPDATE moto_fotos SET is_cover=0 WHERE moto_id=?")->execute([$id]);
-        $pdo->prepare("UPDATE moto_fotos SET is_cover=1 WHERE id=? AND moto_id=?")->execute([$primeiraInseridaId, $id]);
-      }
+      // Renumera 0,1,2... e fixa a primeira como capa (mantém a capa existente se já havia fotos)
+      moto_fotos_reindex($pdo, $id);
     }
 
     $stmt = $pdo->prepare("SELECT * FROM motos WHERE id=?");
@@ -141,7 +143,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $fotos = [];
 if ($editando) {
-  $stmt = $pdo->prepare("SELECT * FROM moto_fotos WHERE moto_id=? ORDER BY is_cover DESC, id ASC");
+  $stmt = $pdo->prepare("SELECT * FROM moto_fotos WHERE moto_id=? ORDER BY ordem ASC, id ASC");
   $stmt->execute([$id]);
   $fotos = $stmt->fetchAll();
 }
@@ -254,11 +256,15 @@ include __DIR__ . '/../inc/header.php';
           </div>
         </div>
 
-        <div class="field field-prefix">
-          <label>Valor de venda *</label>
+        <div class="field field-prefix" id="valorWrap">
+          <label>Valor de venda</label>
           <span>R$</span>
-          <input type="text" name="valor" id="valorInput" value="<?= number_format((float)$moto['valor'], 2, ',', '.') ?>" placeholder="0,00" required inputmode="decimal">
+          <input type="text" name="valor" id="valorInput" value="<?= number_format((float)$moto['valor'], 2, ',', '.') ?>" placeholder="0,00" inputmode="decimal">
         </div>
+        <label class="check-line">
+          <input type="checkbox" name="valor_a_combinar" id="valorCombinarChk" value="1" <?= !empty($moto['valor_a_combinar']) ? 'checked' : '' ?>>
+          <span>Valor a combinar com o consultor <span class="text-muted" style="font-weight:500;">(o preço não aparece no site — mostra "Sob consulta")</span></span>
+        </label>
 
         <div class="field">
           <label>Descrição</label>
@@ -356,26 +362,39 @@ include __DIR__ . '/../inc/header.php';
     <?php if ($editando): ?>
       <div class="form-card mt-6" style="max-width:760px;">
         <h2 style="font-size:18px;margin-bottom:8px;">Fotos atuais</h2>
-        <p class="text-sm text-muted mb-3">A CAPA aparece primeiro no marketplace.</p>
+        <p class="text-sm text-muted mb-3">Use as setas ‹ › para ordenar. A <b>1ª foto (Capa)</b> é a que aparece primeiro no site.</p>
 
         <?php if (!$fotos): ?>
           <p class="text-muted">Nenhuma foto cadastrada ainda.</p>
         <?php else: ?>
           <div class="photo-grid">
-            <?php foreach ($fotos as $f): ?>
+            <?php $totFotos = count($fotos); foreach ($fotos as $pos => $f): ?>
               <div class="photo-thumb">
                 <img src="<?= base_url('uploads/' . htmlspecialchars($f['caminho'])) ?>" alt="">
-                <?php if (!empty($f['is_cover'])): ?>
+                <div class="photo-pos"><?= $pos + 1 ?></div>
+                <?php if ($pos === 0): ?>
                   <div class="photo-cover-tag">Capa</div>
                 <?php endif; ?>
                 <a class="photo-x"
                    href="<?= base_url('painel/moto_foto_delete.php?moto_id='.(int)$id.'&foto_id='.(int)$f['id']) ?>"
                    onclick="return confirm('Apagar esta foto?')" title="Apagar">×</a>
                 <div class="photo-actions">
-                  <a href="<?= base_url('painel/moto_set_cover.php?moto_id='.(int)$id.'&foto_id='.(int)$f['id']) ?>"
-                     class="<?= !empty($f['is_cover']) ? 'is-cover' : '' ?>"
-                     onclick="return confirm('Definir esta foto como CAPA?')">Capa</a>
-                  <a href="<?= base_url('uploads/' . htmlspecialchars($f['caminho'])) ?>" download>Baixar</a>
+                  <?php if ($pos > 0): ?>
+                    <a href="<?= base_url('painel/moto_foto_reorder.php?moto_id='.(int)$id.'&foto_id='.(int)$f['id'].'&dir=antes') ?>" title="Mover para trás">‹</a>
+                  <?php else: ?>
+                    <span class="disabled">‹</span>
+                  <?php endif; ?>
+                  <?php if ($pos > 0): ?>
+                    <a href="<?= base_url('painel/moto_set_cover.php?moto_id='.(int)$id.'&foto_id='.(int)$f['id']) ?>"
+                       title="Tornar capa (mover para o início)">Capa</a>
+                  <?php else: ?>
+                    <span class="is-cover">Capa</span>
+                  <?php endif; ?>
+                  <?php if ($pos < $totFotos - 1): ?>
+                    <a href="<?= base_url('painel/moto_foto_reorder.php?moto_id='.(int)$id.'&foto_id='.(int)$f['id'].'&dir=depois') ?>" title="Mover para frente">›</a>
+                  <?php else: ?>
+                    <span class="disabled">›</span>
+                  <?php endif; ?>
                 </div>
               </div>
             <?php endforeach; ?>
@@ -398,6 +417,12 @@ include __DIR__ . '/../inc/header.php';
   .tag-suggest-item{ padding:9px 12px; cursor:pointer; font-size:14px; }
   .tag-suggest-item:hover{ background:var(--surface-2); }
   .tag-suggest-new{ color:var(--brand-700,#b00000); font-weight:700; }
+  .check-line{ display:flex; align-items:flex-start; gap:8px; cursor:pointer; font-size:14px; font-weight:600; padding:4px 2px; }
+  .check-line input{ width:18px; height:18px; margin-top:1px; flex-shrink:0; cursor:pointer; }
+  .photo-pos{ position:absolute; top:6px; left:6px; background:rgba(0,0,0,.7); color:#fff; width:22px; height:22px; border-radius:999px; display:grid; place-items:center; font-size:12px; font-weight:800; z-index:2; }
+  .photo-actions span{ flex:1; text-align:center; padding:6px 8px; border-radius:var(--r-sm); background:rgba(255,255,255,.92); color:var(--text); font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; }
+  .photo-actions span.is-cover{ background:var(--green-600,#16a34a); color:#fff; }
+  .photo-actions span.disabled{ opacity:.35; }
 </style>
 <script>
 // Busca pela placa (preenche o formulário)
@@ -498,6 +523,19 @@ function aplicarMascaraMoeda(el){
 }
 aplicarMascaraMoeda(document.getElementById('valorInput'));
 aplicarMascaraMoeda(document.getElementById('valorFipeInput'));
+
+// "Valor a combinar" desabilita o campo de preço
+const valorChk = document.getElementById('valorCombinarChk');
+const valorInput = document.getElementById('valorInput');
+const valorWrap = document.getElementById('valorWrap');
+function syncValorCombinar(){
+  if (!valorChk || !valorInput) return;
+  const on = valorChk.checked;
+  valorInput.disabled = on;
+  if (on) valorInput.value = '';
+  if (valorWrap) valorWrap.style.opacity = on ? '.45' : '';
+}
+if (valorChk){ valorChk.addEventListener('change', syncValorCombinar); syncValorCombinar(); }
 
 // ===== Campo de TAGS do Diferencial =====
 const DIF_OPCOES = <?= json_encode(array_values($opcoesDiferencial), JSON_UNESCAPED_UNICODE) ?>;
