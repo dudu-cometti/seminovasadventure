@@ -184,7 +184,11 @@ include __DIR__ . '/inc/header.php';
             <button class="mcard-fav" type="button" data-fav-id="<?= $mid ?>" aria-label="Favoritar">
               <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
             </button>
-            <div class="mcard-tag <?= $aCombinar ? 'is-consulta' : '' ?>">
+          </a>
+          <div class="mcard-body">
+            <a class="mcard-name" href="<?= htmlspecialchars($motoUrl) ?>"><?= htmlspecialchars($nomeMoto) ?></a>
+
+            <div class="mcard-price <?= $aCombinar ? 'is-consulta' : '' ?>">
               <?php if ($aCombinar): ?>
                 <span class="now">A combinar</span>
               <?php else: ?>
@@ -192,9 +196,6 @@ include __DIR__ . '/inc/header.php';
                 <span class="now">R$ <?= $precoFmt ?></span>
               <?php endif; ?>
             </div>
-          </a>
-          <div class="mcard-body">
-            <a class="mcard-name" href="<?= htmlspecialchars($motoUrl) ?>"><?= htmlspecialchars($nomeMoto) ?></a>
 
             <div class="mcard-specs2">
               <div class="spec"><b>Ano</b><span><?= htmlspecialchars($m['ano_modelo']) ?></span></div>

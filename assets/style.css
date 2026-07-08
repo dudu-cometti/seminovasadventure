@@ -1287,32 +1287,25 @@ body.chrome-hidden .mkt-toolbar{
 .mcard-fav.active{ color: var(--brand-600); }
 .mcard-fav.active svg{ fill: var(--brand-600); stroke: var(--brand-600); }
 
-/* Etiqueta de preço sobre a foto */
-.mcard-tag{
-  position: absolute; z-index: 3; left: 12px; bottom: 12px;
-  background: #f4b942; color: #191714;
-  padding: 8px 14px; border-radius: var(--r-sm);
-  box-shadow: 0 3px 10px rgba(0,0,0,.18);
-  line-height: 1.05;
-}
-.mcard-tag .old{
-  display: block; font-family: var(--font-mono);
-  font-size: 12px; font-weight: 500; color: #7a5b12;
-  text-decoration: line-through;
-}
-.mcard-tag .now{
-  display: block; font-family: var(--font-mono);
-  font-size: 22px; font-weight: 700; letter-spacing: -.02em;
-}
-.mcard-tag.is-consulta .now{ font-family: var(--font-display); font-size: 18px; }
-
-.mcard-body{ padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 12px; flex: 1; }
+.mcard-body{ padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
 .mcard-name{
   font-family: var(--font-display);
   font-weight: 900; text-transform: uppercase;
   font-size: 26px; line-height: .95; color: var(--text);
 }
 .mcard-name:hover{ color: var(--brand-700); }
+
+/* Preço no corpo do card (limpo, fora da foto) */
+.mcard-price{ display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.mcard-price .old{
+  font-family: var(--font-mono); font-size: 13px; font-weight: 500;
+  color: var(--text-muted); text-decoration: line-through;
+}
+.mcard-price .now{
+  font-family: var(--font-mono); font-size: 28px; font-weight: 700;
+  letter-spacing: -.02em; color: var(--brand-700); line-height: 1;
+}
+.mcard-price.is-consulta .now{ font-family: var(--font-display); font-size: 20px; text-transform: uppercase; }
 
 /* Ficha 2x2 com barrinhas vermelhas */
 .mcard-specs2{ display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
