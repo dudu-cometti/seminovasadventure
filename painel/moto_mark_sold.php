@@ -38,6 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($vendedorId <= 0) { $vendedorId = (int)($user['id'] ?? 0); $vendedorNome = $user['nome'] ?? ''; }
     $clienteNome   = trim($_POST['cliente_nome'] ?? '');
     $clienteTel    = trim($_POST['cliente_telefone'] ?? '');
+    $clienteEmail  = trim($_POST['cliente_email'] ?? '');
     $clienteDoc    = trim($_POST['cliente_doc'] ?? '');
     $observacao    = trim($_POST['observacao'] ?? '');
     $dataVenda     = trim($_POST['data_venda'] ?? '');
@@ -49,13 +50,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $erro = 'Informe o valor da venda.';
     } elseif ($clienteNome === '') {
         $erro = 'Informe o nome do cliente.';
+    } elseif ($clienteEmail !== '' && !filter_var($clienteEmail, FILTER_VALIDATE_EMAIL)) {
+        $erro = 'E-mail do cliente inválido.';
     } else {
         $pdo->beginTransaction();
         try {
             $stmt = $pdo->prepare("INSERT INTO vendas
-                (moto_id, vendedor_id, vendedor_nome, cliente_nome, cliente_telefone, cliente_doc, valor_venda, data_venda, observacao)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$id, $vendedorId, $vendedorNome, $clienteNome, $clienteTel, $clienteDoc, $valor_venda, $dataVenda, $observacao]);
+                (moto_id, vendedor_id, vendedor_nome, cliente_nome, cliente_telefone, cliente_email, cliente_doc, valor_venda, data_venda, observacao)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$id, $vendedorId, $vendedorNome, $clienteNome, $clienteTel, $clienteEmail, $clienteDoc, $valor_venda, $dataVenda, $observacao]);
 
             // sold_at recebe a data escolhida (meio-dia, evita fuso zerar pro dia anterior)
             $stmt = $pdo->prepare("UPDATE motos SET status = 'vendida', sold_at = ?, updated_at = NOW() WHERE id = ?");
@@ -146,9 +149,15 @@ include __DIR__ . '/../inc/header.php';
             <input type="text" name="cliente_telefone" id="cliente_telefone" placeholder="(27) 99999-9999" inputmode="numeric" maxlength="16" autocomplete="off">
           </div>
         </div>
-        <div class="field mb-4">
-          <label>CPF <span class="text-muted" style="font-weight:500;">(opcional)</span></label>
-          <input type="text" name="cliente_doc" id="cliente_doc" placeholder="000.000.000-00" inputmode="numeric" maxlength="14" autocomplete="off">
+        <div class="form-grid form-grid-2">
+          <div class="field mb-4">
+            <label>E-mail <span class="text-muted" style="font-weight:500;">(opcional)</span></label>
+            <input type="email" name="cliente_email" placeholder="email@exemplo.com" autocomplete="off">
+          </div>
+          <div class="field mb-4">
+            <label>CPF <span class="text-muted" style="font-weight:500;">(opcional)</span></label>
+            <input type="text" name="cliente_doc" id="cliente_doc" placeholder="000.000.000-00" inputmode="numeric" maxlength="14" autocomplete="off">
+          </div>
         </div>
         <div class="field mb-4">
           <label>Observação <span class="text-muted" style="font-weight:500;">(opcional)</span></label>

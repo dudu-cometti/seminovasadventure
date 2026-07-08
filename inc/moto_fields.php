@@ -79,6 +79,7 @@ if (!function_exists('ensure_vendas_schema')) {
         'vendedor_nome'    => "VARCHAR(120) NOT NULL DEFAULT ''",
         'cliente_nome'     => "VARCHAR(160) NOT NULL DEFAULT ''",
         'cliente_telefone' => "VARCHAR(40) NOT NULL DEFAULT ''",
+        'cliente_email'    => "VARCHAR(160) NOT NULL DEFAULT ''",
         'cliente_doc'      => "VARCHAR(40) NOT NULL DEFAULT ''",
         'data_venda'       => "DATE NULL",
         'observacao'       => "TEXT NULL",
