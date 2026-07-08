@@ -1257,8 +1257,15 @@ body.chrome-hidden .mkt-toolbar{
   aspect-ratio: 4 / 3;
   background: var(--surface-2); overflow: hidden;
 }
+.mcard-photo::before{
+  content: ""; position: absolute; inset: 0;
+  background-image: var(--photo, none);
+  background-size: cover; background-position: center;
+  filter: blur(20px) brightness(.7); transform: scale(1.2);
+}
 .mcard-photo img{
-  width: 100%; height: 100%; object-fit: cover;  /* moto preenche o quadro, limpo */
+  position: relative; z-index: 1;
+  width: 100%; height: 100%; object-fit: contain;  /* foto inteira + fundo desfocado */
 }
 /* Faixa diagonal (ribbon) no canto da foto */
 .mcard-ribbon{
