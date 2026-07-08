@@ -38,6 +38,7 @@ CREATE TABLE motos (
   condicao       ENUM('','nova','seminova') NOT NULL DEFAULT '',
   cor            VARCHAR(40)  NOT NULL,
   valor          DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  valor_a_combinar TINYINT(1) NOT NULL DEFAULT 0,  -- 1 = mostra "Valor a combinar"
   valor_fipe     DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   descricao      TEXT NULL,
   -- procedencia
@@ -66,6 +67,7 @@ CREATE TABLE motos (
   financiamento       ENUM('','sim','nao') NOT NULL DEFAULT '',
   garantia_loja       ENUM('','sim','nao') NOT NULL DEFAULT '',
   status         ENUM('disponivel','reservada','vendida') NOT NULL DEFAULT 'disponivel',
+  sold_at        DATETIME NULL,   -- data/hora da venda (preenchido ao vender)
   created_by     INT NULL,
   created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at     DATETIME NULL,
@@ -82,9 +84,29 @@ CREATE TABLE moto_fotos (
   moto_id   INT NOT NULL,
   caminho   VARCHAR(255) NOT NULL,
   is_cover  TINYINT(1) NOT NULL DEFAULT 0,
+  ordem     INT NOT NULL DEFAULT 0,   -- sequencia das fotos (0 = capa/1a)
   KEY idx_moto (moto_id),
   CONSTRAINT fk_fotos_motos FOREIGN KEY (moto_id)
     REFERENCES motos (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ------------------------------------------------------------
+-- VENDAS (registro detalhado de cada venda)
+-- ------------------------------------------------------------
+CREATE TABLE vendas (
+  id                INT AUTO_INCREMENT PRIMARY KEY,
+  moto_id           INT NOT NULL,
+  vendedor_id       INT NULL,                          -- users.id do vendedor
+  vendedor_nome     VARCHAR(120) NOT NULL DEFAULT '',
+  cliente_nome      VARCHAR(160) NOT NULL DEFAULT '',
+  cliente_telefone  VARCHAR(40)  NOT NULL DEFAULT '',
+  cliente_email     VARCHAR(160) NOT NULL DEFAULT '',
+  cliente_doc       VARCHAR(40)  NOT NULL DEFAULT '',   -- CPF
+  valor_venda       DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  data_venda        DATE NULL,
+  observacao        TEXT NULL,
+  created_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_moto (moto_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ------------------------------------------------------------
