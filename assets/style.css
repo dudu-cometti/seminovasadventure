@@ -1146,13 +1146,13 @@ body.chrome-hidden .mkt-toolbar{
 /* Botão "Chamar no zap" no header */
 .btn-zap-head{
   display: inline-flex; align-items: center; gap: 8px;
-  background: var(--brand-600); color: #fff;
+  background: var(--wa, #25d366); color: #fff;
   font-weight: 800; font-size: 14px;
   padding: 10px 16px; border-radius: var(--r-full);
   white-space: nowrap;
   transition: background var(--t-fast);
 }
-.btn-zap-head:hover{ background: var(--brand-700); color: #fff; }
+.btn-zap-head:hover{ background: var(--wa-dark, #1da851); color: #fff; }
 .btn-zap-head svg{ flex-shrink: 0; }
 
 /* Faixa de confiança (fundo escuro) */
@@ -1236,8 +1236,8 @@ body.chrome-hidden .mkt-toolbar{
 /* Grid denso */
 .grid-motos{
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 18px;
   padding-bottom: var(--space-12);
 }
 
@@ -1255,17 +1255,10 @@ body.chrome-hidden .mkt-toolbar{
 .mcard-photo{
   position: relative; display: block;
   aspect-ratio: 4 / 3;
-  background: #e9e5db; overflow: hidden;
-}
-.mcard-photo::before{
-  content: ""; position: absolute; inset: 0;
-  background-image: var(--photo, none);
-  background-size: cover; background-position: center;
-  filter: blur(18px) brightness(.7); transform: scale(1.2);
+  background: var(--surface-2); overflow: hidden;
 }
 .mcard-photo img{
-  position: relative; z-index: 1;
-  width: 100%; height: 100%; object-fit: contain;
+  width: 100%; height: 100%; object-fit: cover;  /* moto preenche o quadro, limpo */
 }
 /* Faixa diagonal (ribbon) no canto da foto */
 .mcard-ribbon{
@@ -1338,12 +1331,12 @@ body.chrome-hidden .mkt-toolbar{
 .mcard-zap{
   flex: 1;
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  background: var(--brand-600); color: #fff;
+  background: var(--wa, #25d366); color: #fff;
   font-weight: 800; font-size: 15px; text-transform: uppercase; letter-spacing: .01em;
   padding: 13px 14px; border-radius: var(--r-sm);
   transition: background var(--t-fast);
 }
-.mcard-zap:hover{ background: var(--brand-700); color: #fff; }
+.mcard-zap:hover{ background: var(--wa-dark, #1da851); color: #fff; }
 .mcard-zap svg{ width: 18px; height: 18px; flex-shrink: 0; }
 .mcard-more{
   display: inline-flex; align-items: center; justify-content: center;
