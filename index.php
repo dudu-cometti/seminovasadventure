@@ -118,25 +118,50 @@ include __DIR__ . '/inc/header.php';
     </section>
   <?php endif; ?>
 
+  <?php $filtrosAtivos = ($fmarca !== '' || $fano !== '' || $ordem !== 'recentes'); ?>
   <form method="get" class="filterbar" id="filterForm">
-    <input class="filterbar-search" type="search" name="q" placeholder="Buscar modelo, cor…" value="<?= htmlspecialchars($q) ?>" autocomplete="off">
-    <select name="marca" onchange="this.form.submit()">
-      <option value="">Todas as marcas</option>
-      <?php foreach ($marcasDisponiveis as $m): ?>
-        <option value="<?= htmlspecialchars($m) ?>" <?= $fmarca===$m?'selected':'' ?>><?= htmlspecialchars($m) ?></option>
-      <?php endforeach; ?>
-    </select>
-    <input class="filterbar-ano" type="text" name="ano" placeholder="Ano" value="<?= htmlspecialchars($fano) ?>" inputmode="numeric">
-    <select name="ordem" onchange="this.form.submit()">
-      <option value="recentes"   <?= $ordem==='recentes'?'selected':'' ?>>Mais recentes</option>
-      <option value="preco_asc"  <?= $ordem==='preco_asc'?'selected':'' ?>>Menor preço</option>
-      <option value="preco_desc" <?= $ordem==='preco_desc'?'selected':'' ?>>Maior preço</option>
-      <option value="km_asc"     <?= $ordem==='km_asc'?'selected':'' ?>>Menor km</option>
-    </select>
-    <button type="submit" class="filterbar-go">Filtrar</button>
-    <?php if ($q || $fmarca || $fano || $ordem !== 'recentes'): ?>
-      <a href="<?= base_url('index.php') ?>" class="filterbar-clear">Limpar</a>
-    <?php endif; ?>
+    <div class="fb-row">
+      <div class="fb-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input type="search" name="q" placeholder="Buscar modelo, cor…" value="<?= htmlspecialchars($q) ?>" autocomplete="off">
+      </div>
+      <button type="button" class="fb-toggle <?= $filtrosAtivos ? 'has-active' : '' ?>" id="fbToggle" aria-expanded="<?= $filtrosAtivos ? 'true' : 'false' ?>">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16M7 12h10M10 19h4"/></svg>
+        <span>Filtros</span>
+        <?php if ($filtrosAtivos): ?><i class="fb-dot"></i><?php endif; ?>
+      </button>
+    </div>
+
+    <div class="fb-panel <?= $filtrosAtivos ? 'open' : '' ?>" id="fbPanel">
+      <div class="fb-field">
+        <label>Marca</label>
+        <select name="marca">
+          <option value="">Todas as marcas</option>
+          <?php foreach ($marcasDisponiveis as $m): ?>
+            <option value="<?= htmlspecialchars($m) ?>" <?= $fmarca===$m?'selected':'' ?>><?= htmlspecialchars($m) ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+      <div class="fb-field">
+        <label>Ano</label>
+        <input type="text" name="ano" placeholder="Ex: 2023" value="<?= htmlspecialchars($fano) ?>" inputmode="numeric">
+      </div>
+      <div class="fb-field">
+        <label>Ordenar por</label>
+        <select name="ordem">
+          <option value="recentes"   <?= $ordem==='recentes'?'selected':'' ?>>Mais recentes</option>
+          <option value="preco_asc"  <?= $ordem==='preco_asc'?'selected':'' ?>>Menor preço</option>
+          <option value="preco_desc" <?= $ordem==='preco_desc'?'selected':'' ?>>Maior preço</option>
+          <option value="km_asc"     <?= $ordem==='km_asc'?'selected':'' ?>>Menor km</option>
+        </select>
+      </div>
+      <div class="fb-actions">
+        <button type="submit" class="fb-apply">Aplicar filtros</button>
+        <?php if ($q || $filtrosAtivos): ?>
+          <a href="<?= base_url('index.php') ?>" class="fb-clear">Limpar</a>
+        <?php endif; ?>
+      </div>
+    </div>
   </form>
 
   <?php if (!$motos): ?>
@@ -186,6 +211,11 @@ include __DIR__ . '/inc/header.php';
             </button>
           </a>
           <div class="mcard-body">
+            <?php if (($m['condicao'] ?? '') === 'nova'): ?>
+              <span class="mcard-cond cond-nova">0 km</span>
+            <?php elseif (($m['condicao'] ?? '') === 'seminova'): ?>
+              <span class="mcard-cond cond-semi">Seminova</span>
+            <?php endif; ?>
             <a class="mcard-name" href="<?= htmlspecialchars($motoUrl) ?>"><?= htmlspecialchars($nomeMoto) ?></a>
 
             <div class="mcard-price <?= $aCombinar ? 'is-consulta' : '' ?>">
@@ -219,6 +249,17 @@ include __DIR__ . '/inc/header.php';
 </main>
 
 <script>
+// Abre/fecha o painel de filtros
+(function(){
+  const btn = document.getElementById('fbToggle');
+  const panel = document.getElementById('fbPanel');
+  if (!btn || !panel) return;
+  btn.addEventListener('click', () => {
+    const open = panel.classList.toggle('open');
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+})();
+
 // Favoritar (coração) — salva no navegador
 (function(){
   const favs = new Set(JSON.parse(localStorage.getItem('moto_favs') || '[]'));
