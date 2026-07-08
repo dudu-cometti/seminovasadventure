@@ -35,6 +35,9 @@ $logo_path       = setting_get($pdo, 'logo_path', '');
 $banner_ativo    = setting_get($pdo, 'banner_ativo', '0');
 $banner_desktop  = setting_get($pdo, 'banner_desktop', '');
 $banner_mobile   = setting_get($pdo, 'banner_mobile', '');
+$faixa1          = setting_get($pdo, 'faixa_1', '★★★★★ Bem avaliada no Google');
+$faixa2          = setting_get($pdo, 'faixa_2', 'Loja física em São Silvano - ES');
+$faixa3          = setting_get($pdo, 'faixa_3', 'Financiamento e troca na hora');
 $nomeLoja        = setting_get($pdo, 'marketplace_nome', 'Adventure Motos');
 $cidadeLoja   = setting_get($pdo, 'marketplace_cidade', 'São Silvano - ES');
 $placaToken   = setting_get($pdo, 'placa_api_token', '');
@@ -60,6 +63,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $placaToken = trim($_POST['placa_api_token']);
       setting_set($pdo, 'placa_api_token', $placaToken);
     }
+
+    foreach (['faixa_1','faixa_2','faixa_3'] as $fk) {
+      if (isset($_POST[$fk])) setting_set($pdo, $fk, trim($_POST[$fk]));
+    }
+    $faixa1 = $_POST['faixa_1'] ?? $faixa1;
+    $faixa2 = $_POST['faixa_2'] ?? $faixa2;
+    $faixa3 = $_POST['faixa_3'] ?? $faixa3;
 
     if (!empty($_FILES['logo']['tmp_name'])) {
       $uploadDir = __DIR__ . '/../uploads/';
@@ -179,6 +189,16 @@ include __DIR__ . '/../inc/header.php';
               <img src="<?= base_url($logo_path) ?>" alt="Logo atual" style="max-width:160px;max-height:80px;display:block;">
             </div>
           <?php endif; ?>
+        </div>
+
+        <div class="field" style="padding-top:12px;border-top:1px solid var(--border-soft);">
+          <label style="font-size:15px;font-weight:800;">Faixa de confiança <span class="text-muted" style="font-weight:500;">(barra escura abaixo do topo)</span></label>
+          <div class="form-grid" style="gap:10px;margin-top:8px;">
+            <input type="text" name="faixa_1" value="<?= htmlspecialchars($faixa1) ?>" placeholder="Ex: ★ 4,9 no Google">
+            <input type="text" name="faixa_2" value="<?= htmlspecialchars($faixa2) ?>" placeholder="Ex: 12 anos de loja">
+            <input type="text" name="faixa_3" value="<?= htmlspecialchars($faixa3) ?>" placeholder="Ex: Financiamento e troca">
+          </div>
+          <small>Três selos curtos de confiança que aparecem na barra escura abaixo do topo.</small>
         </div>
 
         <div class="field" style="padding-top:12px;border-top:1px solid var(--border-soft);">

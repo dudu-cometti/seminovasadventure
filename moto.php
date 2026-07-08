@@ -46,7 +46,7 @@ $fotos = [];
 foreach ($fotosRows as $f) $fotos[] = base_url('uploads/' . $f['caminho']);
 if (!$fotos) $fotos[] = "https://placehold.co/1200x800?text=Moto+Seminova";
 
-$whatsapp = setting_get_any($pdo, ['whatsapp_number','whatsapp','numero_whatsapp','telefone_whatsapp'], '5527999215754');
+$whatsapp = preg_replace('/\D+/', '', setting_get_any($pdo, ['whatsapp_number','whatsapp','numero_whatsapp','telefone_whatsapp'], '5527999215754'));
 $nomeLoja = setting_get_any($pdo, ['marketplace_nome','loja_nome','nome_loja','site_nome'], 'Adventure Motos');
 
 $nomeMoto = trim(($moto['titulo'] ?: $moto['modelo']) . '');
@@ -54,8 +54,12 @@ $km = number_format((int)$moto['quilometragem'], 0, ',', '.');
 $valor = number_format((float)$moto['valor'], 2, ',', '.');
 $valorACombinar = !empty($moto['valor_a_combinar']) || (float)$moto['valor'] <= 0;
 
-$msg = "Olá, tenho interesse na moto {$nomeMoto}. Ano/modelo {$moto['ano_modelo']}, {$km} km, cor {$moto['cor']}. Ainda está disponível?";
-$wa_link = "https://wa.me/{$whatsapp}?text=" . urlencode($msg);
+if ($valorACombinar) {
+  $msg = "Oi! Tenho interesse na {$nomeMoto} {$moto['ano_modelo']}. Qual o valor?";
+} else {
+  $msg = "Oi! Tenho interesse na {$nomeMoto} {$moto['ano_modelo']} por R$ " . number_format((float)$moto['valor'], 0, ',', '.');
+}
+$wa_link = "https://wa.me/{$whatsapp}?text=" . rawurlencode($msg);
 
 $page_title = $nomeMoto . ' — ' . $nomeLoja;
 
@@ -169,9 +173,12 @@ $sugestoes = $stmtSug->fetchAll();
     position: sticky; top: 90px;
   }
   .price-card h1{
-    font-size: 22px;
-    line-height: 1.25;
-    letter-spacing: -.02em;
+    font-family: var(--font-display);
+    font-weight: 900;
+    text-transform: uppercase;
+    font-size: 30px;
+    line-height: .98;
+    letter-spacing: -.005em;
   }
   .price-main{
     margin: var(--space-4) 0;
@@ -179,14 +186,17 @@ $sugestoes = $stmtSug->fetchAll();
     border-top: 1px solid var(--border-soft);
     border-bottom: 1px solid var(--border-soft);
   }
-  .price-main-currency{ font-size: 14px; color: var(--text-muted); font-weight: 700; }
+  .price-main-currency{ font-size: 14px; color: var(--text-muted); font-weight: 500; font-family: var(--font-mono); }
   .price-main-value{
+    font-family: var(--font-mono);
     font-size: 34px;
-    font-weight: 900;
-    letter-spacing: -.025em;
+    font-weight: 700;
+    letter-spacing: -.03em;
     margin-left: 4px;
+    color: var(--brand-700);
   }
   .price-main-consulta{
+    font-family: var(--font-display);
     font-size: 26px;
     font-weight: 900;
     letter-spacing: -.02em;
