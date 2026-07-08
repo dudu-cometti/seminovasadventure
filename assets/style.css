@@ -1341,10 +1341,40 @@ body.chrome-hidden .mkt-toolbar{
   background-size: cover; background-position: center;
   filter: blur(20px) brightness(.7); transform: scale(1.2);
 }
+.mcard-photo-link{ position: relative; z-index: 1; display: block; width: 100%; height: 100%; }
 .mcard-photo img{
   position: relative; z-index: 1;
   width: 100%; height: 100%; object-fit: contain;  /* foto inteira + fundo desfocado */
 }
+
+/* Setas discretas de navegação das fotos */
+.mcard-nav{
+  position: absolute; z-index: 4; top: 50%; transform: translateY(-50%);
+  width: 30px; height: 30px; border-radius: 50%;
+  background: rgba(255,255,255,.78); color: #191714;
+  display: grid; place-items: center;
+  font-size: 20px; line-height: 1; font-weight: 700;
+  opacity: 0; transition: opacity var(--t-fast), background var(--t-fast);
+  backdrop-filter: blur(2px);
+}
+.mcard-nav.prev{ left: 8px; }
+.mcard-nav.next{ right: 8px; }
+.mcard:hover .mcard-nav{ opacity: 1; }
+.mcard-nav:hover{ background: #fff; }
+/* No celular (touch) as setas ficam levemente visíveis */
+@media (hover: none){ .mcard-nav{ opacity: .8; } }
+
+/* Bolinhas indicadoras */
+.mcard-dots{
+  position: absolute; z-index: 4; bottom: 8px; left: 0; right: 0;
+  display: flex; justify-content: center; gap: 5px;
+}
+.mcard-dots span{
+  width: 6px; height: 6px; border-radius: 50%;
+  background: rgba(255,255,255,.55); box-shadow: 0 0 2px rgba(0,0,0,.3);
+  transition: background var(--t-fast);
+}
+.mcard-dots span.active{ background: #fff; }
 /* Faixa diagonal (ribbon) no canto da foto */
 .mcard-ribbon{
   position: absolute; z-index: 3; top: 16px; left: -42px;

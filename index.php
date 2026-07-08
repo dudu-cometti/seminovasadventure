@@ -192,7 +192,11 @@ include __DIR__ . '/inc/header.php';
         <?php
           $mid = (int)$m['id'];
           $fotos = $galerias[$mid] ?? [];
-          $foto0 = !empty($fotos) ? base_url('uploads/' . $fotos[0]) : "https://placehold.co/600x450?text=Moto";
+          $urls = [];
+          foreach ($fotos as $c) $urls[] = base_url('uploads/' . $c);
+          if (!$urls) $urls[] = "https://placehold.co/600x450?text=Moto";
+          $foto0 = $urls[0];
+          $dataGaleria = htmlspecialchars(json_encode($urls), ENT_QUOTES, 'UTF-8');
 
           $nomeMoto = trim(($m['titulo'] ?: $m['modelo']) . '');
           $km = number_format((int)$m['quilometragem'], 0, ',', '.');
@@ -217,13 +221,22 @@ include __DIR__ . '/inc/header.php';
         ?>
 
         <article class="mcard">
-          <a class="mcard-photo" href="<?= htmlspecialchars($motoUrl) ?>" style="--photo:url('<?= htmlspecialchars($foto0) ?>')">
-            <img src="<?= htmlspecialchars($foto0) ?>" alt="<?= htmlspecialchars($nomeMoto) ?>" loading="lazy">
+          <div class="mcard-photo" data-galeria="<?= $dataGaleria ?>" style="--photo:url('<?= htmlspecialchars($foto0) ?>')">
+            <a class="mcard-photo-link" href="<?= htmlspecialchars($motoUrl) ?>">
+              <img src="<?= htmlspecialchars($foto0) ?>" alt="<?= htmlspecialchars($nomeMoto) ?>" loading="lazy">
+            </a>
             <span class="mcard-ribbon <?= $reservada ? 'is-resv' : 'is-ok' ?>"><?= $reservada ? 'Reservada' : 'Disponível' ?></span>
             <button class="mcard-fav" type="button" data-fav-id="<?= $mid ?>" aria-label="Favoritar">
               <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
             </button>
-          </a>
+            <?php if (count($urls) > 1): ?>
+              <button class="mcard-nav prev" type="button" aria-label="Foto anterior">‹</button>
+              <button class="mcard-nav next" type="button" aria-label="Próxima foto">›</button>
+              <div class="mcard-dots">
+                <?php for ($i = 0; $i < min(count($urls), 6); $i++): ?><span class="<?= $i===0?'active':'' ?>"></span><?php endfor; ?>
+              </div>
+            <?php endif; ?>
+          </div>
           <div class="mcard-body">
             <?php if (($m['condicao'] ?? '') === 'nova'): ?>
               <span class="mcard-cond cond-nova">0 km</span>
@@ -294,6 +307,45 @@ include __DIR__ . '/inc/header.php';
       fBtn && fBtn.setAttribute('aria-expanded','false');
       sBtn && sBtn.setAttribute('aria-expanded','false');
     }
+  });
+})();
+
+// Galeria nos cards: setas + arrastar o dedo (swipe)
+(function(){
+  document.querySelectorAll('.mcard-photo[data-galeria]').forEach(wrap => {
+    let fotos = [];
+    try { fotos = JSON.parse(wrap.getAttribute('data-galeria') || '[]'); } catch(e){}
+    if (!Array.isArray(fotos) || fotos.length < 2) return;
+
+    const img  = wrap.querySelector('img');
+    const dots = wrap.querySelectorAll('.mcard-dots span');
+    let idx = 0;
+
+    function render(){
+      img.src = fotos[idx];
+      wrap.style.setProperty('--photo', "url('" + fotos[idx] + "')");
+      dots.forEach((d, i) => d.classList.toggle('active', i === idx % dots.length));
+    }
+    function go(delta){ idx = (idx + delta + fotos.length) % fotos.length; render(); }
+
+    wrap.querySelector('.mcard-nav.prev')?.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); go(-1); });
+    wrap.querySelector('.mcard-nav.next')?.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); go(1); });
+
+    // Swipe (arrastar o dedo)
+    let x0 = 0, y0 = 0, dx = 0, dy = 0, tracking = false;
+    wrap.addEventListener('touchstart', e => {
+      if (!e.touches?.length) return;
+      x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; dx = 0; dy = 0; tracking = true;
+    }, { passive: true });
+    wrap.addEventListener('touchmove', e => {
+      if (!tracking || !e.touches?.length) return;
+      dx = e.touches[0].clientX - x0; dy = e.touches[0].clientY - y0;
+      if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 8) e.preventDefault();
+    }, { passive: false });
+    wrap.addEventListener('touchend', () => {
+      if (!tracking) return; tracking = false;
+      if (Math.abs(dx) >= 35 && Math.abs(dx) > Math.abs(dy)) go(dx < 0 ? 1 : -1);
+    }, { passive: true });
   });
 })();
 
