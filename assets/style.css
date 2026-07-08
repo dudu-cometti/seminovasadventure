@@ -44,7 +44,7 @@
   --wa-dark: #1da851;
 
   /* Semânticos */
-  --bg:        #ffe9d6; /* TESTE DE DEPLOY - fundo laranja claro (reverter depois) */
+  --bg:        var(--gray-50);
   --surface:   var(--gray-0);
   --surface-2: var(--gray-100);
   --text:      var(--gray-900);
