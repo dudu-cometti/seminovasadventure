@@ -1267,56 +1267,99 @@ body.chrome-hidden .mkt-toolbar{
   position: relative; z-index: 1;
   width: 100%; height: 100%; object-fit: contain;
 }
-.mcard-status{
-  position: absolute; z-index: 2; top: 10px; left: 10px;
-  display: inline-flex; align-items: center; gap: 6px;
-  background: var(--paper, #fffefb); background: #fffefb;
-  color: var(--text); font-size: 12px; font-weight: 700;
-  padding: 4px 10px; border-radius: var(--r-full);
-  box-shadow: 0 1px 4px rgba(0,0,0,.12);
-}
-.mcard-status i{ width: 8px; height: 8px; border-radius: 50%; background: var(--green-600); }
-.mcard-status.is-resv i{ background: var(--brand-600); }
-.mcard-status.is-resv{ color: var(--brand-700); }
-
-.mcard-body{ padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
-.mcard-specs{
+/* Faixa diagonal (ribbon) no canto da foto */
+.mcard-ribbon{
+  position: absolute; z-index: 3; top: 16px; left: -42px;
+  transform: rotate(-45deg);
+  width: 170px; text-align: center;
+  padding: 5px 0;
   font-family: var(--font-mono);
-  font-size: 11.5px; color: var(--text-muted);
-  letter-spacing: .01em; line-height: 1.4;
+  font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: #fff; background: var(--green-600);
+  box-shadow: 0 2px 6px rgba(0,0,0,.2);
 }
+.mcard-ribbon.is-resv{ background: var(--brand-600); }
+
+/* Coração (favoritar) */
+.mcard-fav{
+  position: absolute; z-index: 3; top: 12px; right: 12px;
+  width: 38px; height: 38px; border-radius: 50%;
+  background: #fffefb; color: var(--text-muted);
+  display: grid; place-items: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,.15);
+  transition: color var(--t-fast), transform var(--t-fast);
+}
+.mcard-fav svg{ width: 20px; height: 20px; }
+.mcard-fav:hover{ transform: scale(1.08); }
+.mcard-fav.active{ color: var(--brand-600); }
+.mcard-fav.active svg{ fill: var(--brand-600); stroke: var(--brand-600); }
+
+/* Etiqueta de preço sobre a foto */
+.mcard-tag{
+  position: absolute; z-index: 3; left: 12px; bottom: 12px;
+  background: #f4b942; color: #191714;
+  padding: 8px 14px; border-radius: var(--r-sm);
+  box-shadow: 0 3px 10px rgba(0,0,0,.18);
+  line-height: 1.05;
+}
+.mcard-tag .old{
+  display: block; font-family: var(--font-mono);
+  font-size: 12px; font-weight: 500; color: #7a5b12;
+  text-decoration: line-through;
+}
+.mcard-tag .now{
+  display: block; font-family: var(--font-mono);
+  font-size: 22px; font-weight: 700; letter-spacing: -.02em;
+}
+.mcard-tag.is-consulta .now{ font-family: var(--font-display); font-size: 18px; }
+
+.mcard-body{ padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 12px; flex: 1; }
 .mcard-name{
   font-family: var(--font-display);
   font-weight: 900; text-transform: uppercase;
-  font-size: 22px; line-height: .98; color: var(--text);
+  font-size: 26px; line-height: .95; color: var(--text);
 }
 .mcard-name:hover{ color: var(--brand-700); }
-.mcard-price{
-  font-family: var(--font-mono);
-  font-weight: 700; font-size: 26px; color: var(--brand-700);
-  letter-spacing: -.02em; line-height: 1; margin-top: 2px;
-}
-.mcard-price span{ font-size: 14px; font-weight: 500; margin-right: 3px; color: var(--text-muted); }
-.mcard-price-consulta{ font-size: 20px; }
 
+/* Ficha 2x2 com barrinhas vermelhas */
+.mcard-specs2{ display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
+.mcard-specs2 .spec{ padding-left: 10px; border-left: 3px solid var(--brand-600); }
+.mcard-specs2 .spec b{
+  display: block; font-family: var(--font-mono);
+  font-size: 10.5px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--text-muted);
+}
+.mcard-specs2 .spec span{
+  display: block; font-weight: 700; font-size: 16px; color: var(--text); margin-top: 1px;
+}
+
+/* Ações: zap (vermelho, grande) + ver mais (outline) */
+.mcard-actions{ display: flex; gap: 10px; margin-top: auto; }
 .mcard-zap{
-  margin-top: auto;
-  align-self: flex-start;
-  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
-  background: var(--wa, #25d366); color: #fff;
-  font-weight: 700; font-size: 13.5px;
-  padding: 8px 14px; border-radius: var(--r-full);
+  flex: 1;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  background: var(--brand-600); color: #fff;
+  font-weight: 800; font-size: 15px; text-transform: uppercase; letter-spacing: .01em;
+  padding: 13px 14px; border-radius: var(--r-sm);
   transition: background var(--t-fast);
 }
-.mcard-zap:hover{ background: var(--wa-dark, #1da851); color: #fff; }
-.mcard-zap svg{ width: 16px; height: 16px; }
+.mcard-zap:hover{ background: var(--brand-700); color: #fff; }
+.mcard-zap svg{ width: 18px; height: 18px; flex-shrink: 0; }
+.mcard-more{
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 13px 16px; border-radius: var(--r-sm);
+  border: 1px solid var(--border); background: var(--surface);
+  color: var(--text); font-weight: 700; font-size: 14px;
+  white-space: nowrap;
+}
+.mcard-more:hover{ border-color: var(--text-muted); color: var(--text); }
 
 @media (max-width: 640px){
   .trust-strip-inner{ font-size: 12px; gap: 6px 16px; }
   .grid-motos{ grid-template-columns: 1fr; gap: 14px; }  /* uma moto por linha */
-  .mcard-name{ font-size: 26px; }
-  .mcard-price{ font-size: 30px; }
-  .mcard-photo{ aspect-ratio: 16 / 10; }
+  .mcard-name{ font-size: 28px; }
+  .mcard-photo{ aspect-ratio: 16 / 11; }
+  .mcard-tag .now{ font-size: 24px; }
 }
 @media (max-width: 520px){
   .btn-zap-head span{ display: none; }        /* no celular, só o ícone */

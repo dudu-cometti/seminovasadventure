@@ -160,6 +160,11 @@ include __DIR__ . '/inc/header.php';
           $aCombinar = !empty($m['valor_a_combinar']) || (float)$m['valor'] <= 0;
           $precoFmt = number_format((float)$m['valor'], 0, ',', '.'); // ex: 19.900
 
+          // Preço "de/por": usa a FIPE como preço cheio riscado, quando maior que o de venda
+          $fipe = (float)($m['valor_fipe'] ?? 0);
+          $temDesconto = !$aCombinar && $fipe > (float)$m['valor'] && (float)$m['valor'] > 0;
+          $fipeFmt = number_format($fipe, 0, ',', '.');
+
           // WhatsApp com mensagem específica da moto
           if ($aCombinar) {
             $msg = "Oi! Tenho interesse na {$nomeMoto} {$m['ano_modelo']}. Qual o valor?";
@@ -175,28 +180,59 @@ include __DIR__ . '/inc/header.php';
         <article class="mcard">
           <a class="mcard-photo" href="<?= htmlspecialchars($motoUrl) ?>" style="--photo:url('<?= htmlspecialchars($foto0) ?>')">
             <img src="<?= htmlspecialchars($foto0) ?>" alt="<?= htmlspecialchars($nomeMoto) ?>" loading="lazy">
-            <span class="mcard-status <?= $reservada ? 'is-resv' : 'is-ok' ?>">
-              <i></i><?= $reservada ? 'Reservada' : 'Disponível' ?>
-            </span>
+            <span class="mcard-ribbon <?= $reservada ? 'is-resv' : 'is-ok' ?>"><?= $reservada ? 'Reservada' : 'Disponível' ?></span>
+            <button class="mcard-fav" type="button" data-fav-id="<?= $mid ?>" aria-label="Favoritar">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            </button>
+            <div class="mcard-tag <?= $aCombinar ? 'is-consulta' : '' ?>">
+              <?php if ($aCombinar): ?>
+                <span class="now">A combinar</span>
+              <?php else: ?>
+                <?php if ($temDesconto): ?><span class="old">R$ <?= $fipeFmt ?></span><?php endif; ?>
+                <span class="now">R$ <?= $precoFmt ?></span>
+              <?php endif; ?>
+            </div>
           </a>
           <div class="mcard-body">
-            <div class="mcard-specs"><?= htmlspecialchars($m['ano_modelo']) ?> · <?= $km ?> km · <?= htmlspecialchars($m['cor']) ?> · <?= htmlspecialchars($m['modelo']) ?></div>
             <a class="mcard-name" href="<?= htmlspecialchars($motoUrl) ?>"><?= htmlspecialchars($nomeMoto) ?></a>
-            <?php if ($aCombinar): ?>
-              <div class="mcard-price mcard-price-consulta">A combinar</div>
-            <?php else: ?>
-              <div class="mcard-price"><span>R$</span><?= $precoFmt ?></div>
-            <?php endif; ?>
-            <a class="mcard-zap" data-wa="1" data-moto-id="<?= $mid ?>" target="_blank" rel="noopener" href="<?= htmlspecialchars($wa_link) ?>">
-              <svg fill="currentColor" viewBox="0 0 24 24" width="18" height="18"><path d="M17.5 14.4c-.3-.1-1.6-.8-1.9-.9-.3-.1-.5-.1-.7.1s-.8.9-1 1.1c-.2.2-.4.2-.7.1-1.6-.8-2.7-1.4-3.7-3.2-.3-.5.3-.5.8-1.5.1-.2 0-.3 0-.5s-.7-1.7-1-2.3c-.3-.6-.5-.5-.7-.5s-.4 0-.6 0c-.2 0-.6.1-.9.4-.3.3-1.2 1.2-1.2 2.9s1.2 3.4 1.4 3.6c.2.2 2.4 3.7 6 5 .8.4 1.5.6 2 .8.8.3 1.6.2 2.2.1.7-.1 2-.8 2.3-1.6.3-.8.3-1.5.2-1.6-.1-.1-.3-.2-.5-.3z"/><path d="M21 11.6c0 5.3-4.3 9.6-9.6 9.6-1.7 0-3.3-.4-4.7-1.2L2 21l1.1-4.5c-.9-1.5-1.5-3.2-1.5-5 0-5.3 4.3-9.6 9.6-9.6S21 6.3 21 11.6zm-9.6-7.8c-4.3 0-7.8 3.5-7.8 7.8 0 1.6.5 3.1 1.4 4.4l-.7 2.7 2.7-.7c1.2.8 2.7 1.2 4.3 1.2 4.3 0 7.8-3.5 7.8-7.8s-3.4-7.6-7.7-7.6z"/></svg>
-              Chamar no zap
-            </a>
+
+            <div class="mcard-specs2">
+              <div class="spec"><b>Ano</b><span><?= htmlspecialchars($m['ano_modelo']) ?></span></div>
+              <div class="spec"><b>Km</b><span><?= $km ?></span></div>
+              <div class="spec"><b>Cor</b><span><?= htmlspecialchars($m['cor']) ?></span></div>
+              <div class="spec"><b>Marca</b><span><?= htmlspecialchars($m['modelo']) ?></span></div>
+            </div>
+
+            <div class="mcard-actions">
+              <a class="mcard-zap" data-wa="1" data-moto-id="<?= $mid ?>" target="_blank" rel="noopener" href="<?= htmlspecialchars($wa_link) ?>">
+                <svg fill="currentColor" viewBox="0 0 24 24" width="18" height="18"><path d="M17.5 14.4c-.3-.1-1.6-.8-1.9-.9-.3-.1-.5-.1-.7.1s-.8.9-1 1.1c-.2.2-.4.2-.7.1-1.6-.8-2.7-1.4-3.7-3.2-.3-.5.3-.5.8-1.5.1-.2 0-.3 0-.5s-.7-1.7-1-2.3c-.3-.6-.5-.5-.7-.5s-.4 0-.6 0c-.2 0-.6.1-.9.4-.3.3-1.2 1.2-1.2 2.9s1.2 3.4 1.4 3.6c.2.2 2.4 3.7 6 5 .8.4 1.5.6 2 .8.8.3 1.6.2 2.2.1.7-.1 2-.8 2.3-1.6.3-.8.3-1.5.2-1.6-.1-.1-.3-.2-.5-.3z"/><path d="M21 11.6c0 5.3-4.3 9.6-9.6 9.6-1.7 0-3.3-.4-4.7-1.2L2 21l1.1-4.5c-.9-1.5-1.5-3.2-1.5-5 0-5.3 4.3-9.6 9.6-9.6S21 6.3 21 11.6zm-9.6-7.8c-4.3 0-7.8 3.5-7.8 7.8 0 1.6.5 3.1 1.4 4.4l-.7 2.7 2.7-.7c1.2.8 2.7 1.2 4.3 1.2 4.3 0 7.8-3.5 7.8-7.8s-3.4-7.6-7.7-7.6z"/></svg>
+                Chamar no zap
+              </a>
+              <a class="mcard-more" href="<?= htmlspecialchars($motoUrl) ?>">Ver mais</a>
+            </div>
           </div>
         </article>
       <?php endforeach; ?>
     </div>
   <?php endif; ?>
 </main>
+
+<script>
+// Favoritar (coração) — salva no navegador
+(function(){
+  const favs = new Set(JSON.parse(localStorage.getItem('moto_favs') || '[]'));
+  document.querySelectorAll('.mcard-fav').forEach(btn => {
+    const id = btn.dataset.favId;
+    if (favs.has(id)) btn.classList.add('active');
+    btn.addEventListener('click', e => {
+      e.preventDefault(); e.stopPropagation();
+      if (favs.has(id)) { favs.delete(id); btn.classList.remove('active'); }
+      else { favs.add(id); btn.classList.add('active'); }
+      localStorage.setItem('moto_favs', JSON.stringify([...favs]));
+    });
+  });
+})();
+</script>
 
 <?php include __DIR__ . '/inc/footer.php'; ?>
 <script src="<?= base_url('assets/track.js?v=2') ?>"></script>
