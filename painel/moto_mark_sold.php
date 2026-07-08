@@ -27,7 +27,15 @@ $sucesso = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $valor_venda   = (float)str_replace(['.', ','], ['', '.'], $_POST['valor_venda'] ?? '0');
-    $vendedorNome  = trim($_POST['vendedor_nome'] ?? '');
+    $vendedorId    = (int)($_POST['vendedor_id'] ?? 0);
+    // Nome do vendedor vem do usuário selecionado (garante consistência)
+    $vendedorNome  = '';
+    if ($vendedorId > 0) {
+        $vst = $pdo->prepare("SELECT nome FROM users WHERE id = ?");
+        $vst->execute([$vendedorId]);
+        $vendedorNome = (string)($vst->fetchColumn() ?: '');
+    }
+    if ($vendedorId <= 0) { $vendedorId = (int)($user['id'] ?? 0); $vendedorNome = $user['nome'] ?? ''; }
     $clienteNome   = trim($_POST['cliente_nome'] ?? '');
     $clienteTel    = trim($_POST['cliente_telefone'] ?? '');
     $clienteDoc    = trim($_POST['cliente_doc'] ?? '');
@@ -47,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $pdo->prepare("INSERT INTO vendas
                 (moto_id, vendedor_id, vendedor_nome, cliente_nome, cliente_telefone, cliente_doc, valor_venda, data_venda, observacao)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$id, $user['id'], $vendedorNome, $clienteNome, $clienteTel, $clienteDoc, $valor_venda, $dataVenda, $observacao]);
+            $stmt->execute([$id, $vendedorId, $vendedorNome, $clienteNome, $clienteTel, $clienteDoc, $valor_venda, $dataVenda, $observacao]);
 
             // sold_at recebe a data escolhida (meio-dia, evita fuso zerar pro dia anterior)
             $stmt = $pdo->prepare("UPDATE motos SET status = 'vendida', sold_at = ?, updated_at = NOW() WHERE id = ?");
@@ -61,6 +69,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
+
+$vendedores = $pdo->query("SELECT id, nome, role FROM users ORDER BY nome ASC")->fetchAll();
 
 $page_title = 'Registrar venda';
 include __DIR__ . '/../inc/header.php';
@@ -114,8 +124,15 @@ include __DIR__ . '/../inc/header.php';
         </div>
 
         <div class="field mb-4">
-          <label>Vendedor</label>
-          <input type="text" name="vendedor_nome" value="<?= htmlspecialchars($user['nome'] ?? '') ?>" placeholder="Nome do consultor que fez a venda">
+          <label>Vendedor *</label>
+          <select name="vendedor_id" required>
+            <?php foreach ($vendedores as $v): ?>
+              <option value="<?= (int)$v['id'] ?>" <?= ((int)$v['id'] === (int)($user['id'] ?? 0)) ? 'selected' : '' ?>>
+                <?= htmlspecialchars($v['nome']) ?><?= $v['role'] === 'gerente' ? ' (gerente)' : '' ?>
+              </option>
+            <?php endforeach; ?>
+          </select>
+          <small>Consultor que realizou a venda (usuários cadastrados no sistema).</small>
         </div>
 
         <h2 style="font-size:15px;font-weight:800;margin:4px 0 8px;padding-top:8px;border-top:1px solid var(--border-soft);">Dados do cliente</h2>

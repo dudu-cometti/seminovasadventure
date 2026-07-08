@@ -7,6 +7,39 @@ require_role('gerente');
 $page_title = 'Usuários e permissões';
 
 $flash = '';
+$erroNovo = '';
+
+// ===== Criar novo usuário =====
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['novo_usuario'])) {
+    $nome  = trim($_POST['nome'] ?? '');
+    $email = trim($_POST['email'] ?? '');
+    $senha = $_POST['senha'] ?? '';
+    $role  = ($_POST['role'] ?? 'vendedor') === 'gerente' ? 'gerente' : 'vendedor';
+    $can_create = isset($_POST['can_create']) ? 1 : 0;
+    $can_edit   = isset($_POST['can_edit']) ? 1 : 0;
+    $can_delete = isset($_POST['can_delete']) ? 1 : 0;
+    // Gerente sempre tem acesso total
+    if ($role === 'gerente') { $can_create = $can_edit = $can_delete = 1; }
+
+    if (!$nome || !$email || !$senha) {
+        $erroNovo = 'Preencha nome, e-mail e senha.';
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $erroNovo = 'E-mail inválido.';
+    } elseif (strlen($senha) < 6) {
+        $erroNovo = 'A senha deve ter no mínimo 6 caracteres.';
+    } else {
+        try {
+            $stmt = $pdo->prepare("INSERT INTO users (nome, email, senha_hash, role, can_create, can_edit, can_delete) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$nome, $email, password_hash($senha, PASSWORD_DEFAULT), $role, $can_create, $can_edit, $can_delete]);
+            $flash = 'Usuário "' . $nome . '" criado com sucesso.';
+        } catch (PDOException $e) {
+            $erroNovo = ($e->getCode() === '23000')
+                ? 'Já existe uma conta com este e-mail.'
+                : 'Erro ao criar usuário: ' . $e->getMessage();
+        }
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['user_id'])) {
     $uid = (int)$_POST['user_id'];
     if ($uid > 0) {
@@ -50,6 +83,48 @@ include __DIR__ . '/../inc/header.php';
     <?php if ($flash): ?>
       <div class="alert alert-success"><span>✓</span> <?= htmlspecialchars($flash) ?></div>
     <?php endif; ?>
+    <?php if ($erroNovo): ?>
+      <div class="alert alert-error"><span>⚠</span> <?= htmlspecialchars($erroNovo) ?></div>
+    <?php endif; ?>
+
+    <!-- ===== Novo usuário ===== -->
+    <div class="card card-pad mb-4">
+      <h2 style="font-size:16px;font-weight:800;margin-bottom:4px;">Cadastrar novo usuário</h2>
+      <p class="text-sm text-muted mb-3">Crie um acesso para um consultor ou gerente da equipe.</p>
+      <form method="post">
+        <input type="hidden" name="novo_usuario" value="1">
+        <div class="form-grid form-grid-2">
+          <div class="field">
+            <label>Nome *</label>
+            <input type="text" name="nome" required placeholder="Nome completo">
+          </div>
+          <div class="field">
+            <label>E-mail *</label>
+            <input type="email" name="email" required placeholder="email@exemplo.com" autocomplete="off">
+          </div>
+        </div>
+        <div class="form-grid form-grid-2">
+          <div class="field">
+            <label>Senha *</label>
+            <input type="password" name="senha" required placeholder="mínimo 6 caracteres" autocomplete="new-password">
+          </div>
+          <div class="field">
+            <label>Função</label>
+            <select name="role" id="novoRole">
+              <option value="vendedor">Vendedor</option>
+              <option value="gerente">Gerente</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-grid" id="novoPerms" style="grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); align-items:end;">
+          <label class="check"><input type="checkbox" name="can_create"><span>Cadastrar</span></label>
+          <label class="check"><input type="checkbox" name="can_edit"><span>Editar</span></label>
+          <label class="check"><input type="checkbox" name="can_delete"><span>Excluir</span></label>
+          <button class="btn btn-primary" type="submit">Criar usuário</button>
+        </div>
+        <small class="text-muted">Gerente já tem acesso total automaticamente. Você pode ajustar as permissões depois, na lista abaixo.</small>
+      </form>
+    </div>
 
     <div class="stack">
       <?php foreach ($users as $u):
@@ -108,5 +183,21 @@ include __DIR__ . '/../inc/header.php';
     </div>
   </div>
 </main>
+
+<script>
+  (function(){
+    const role = document.getElementById('novoRole');
+    const perms = document.getElementById('novoPerms');
+    if (!role || !perms) return;
+    const checks = perms.querySelectorAll('input[type="checkbox"]');
+    function sync(){
+      const ger = role.value === 'gerente';
+      checks.forEach(c => { if (ger) c.checked = true; c.disabled = ger; });
+      perms.style.opacity = ger ? '.5' : '';
+    }
+    role.addEventListener('change', sync);
+    sync();
+  })();
+</script>
 
 <?php include __DIR__ . '/../inc/footer.php'; ?>
