@@ -1295,8 +1295,8 @@ body.chrome-hidden .mkt-toolbar{
 .mcard-cond{
   align-self: flex-start;
   font-family: var(--font-mono);
-  font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
-  padding: 3px 9px; border-radius: var(--r-full); line-height: 1.4;
+  font-size: 9.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  padding: 2px 8px; border-radius: var(--r-full); line-height: 1.4;
 }
 .cond-nova{ background: var(--green-600); color: #fff; }
 .cond-semi{ background: var(--surface-2); color: var(--text-soft); border: 1px solid var(--border); }
@@ -1372,65 +1372,65 @@ body.chrome-hidden .mkt-toolbar{
 .mcard-fav.active{ color: var(--brand-600); }
 .mcard-fav.active svg{ fill: var(--brand-600); stroke: var(--brand-600); }
 
-.mcard-body{ padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+.mcard-body{ padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 7px; flex: 1; }
 .mcard-name{
   font-family: var(--font-display);
   font-weight: 900; text-transform: uppercase;
-  font-size: 26px; line-height: .95; color: var(--text);
+  font-size: 19px; line-height: .98; color: var(--text);
 }
 .mcard-name:hover{ color: var(--brand-700); }
 
 /* Preço no corpo do card (limpo, fora da foto) */
-.mcard-price{ display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.mcard-price{ display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .mcard-price .old{
-  font-family: var(--font-mono); font-size: 13px; font-weight: 500;
+  font-family: var(--font-mono); font-size: 12px; font-weight: 500;
   color: var(--text-muted); text-decoration: line-through;
 }
 .mcard-price .now{
-  font-family: var(--font-mono); font-size: 28px; font-weight: 700;
+  font-family: var(--font-mono); font-size: 21px; font-weight: 700;
   letter-spacing: -.02em; color: var(--brand-700); line-height: 1;
 }
-.mcard-price.is-consulta .now{ font-family: var(--font-display); font-size: 20px; text-transform: uppercase; }
+.mcard-price.is-consulta .now{ font-family: var(--font-display); font-size: 17px; text-transform: uppercase; }
 
 /* Ficha 2x2 com barrinhas vermelhas */
-.mcard-specs2{ display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
-.mcard-specs2 .spec{ padding-left: 10px; border-left: 3px solid var(--brand-600); }
+.mcard-specs2{ display: grid; grid-template-columns: 1fr 1fr; gap: 7px 12px; margin: 2px 0; }
+.mcard-specs2 .spec{ padding-left: 9px; border-left: 2px solid var(--brand-600); }
 .mcard-specs2 .spec b{
   display: block; font-family: var(--font-mono);
-  font-size: 10.5px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase;
+  font-size: 9.5px; font-weight: 500; letter-spacing: .05em; text-transform: uppercase;
   color: var(--text-muted);
 }
 .mcard-specs2 .spec span{
-  display: block; font-weight: 700; font-size: 16px; color: var(--text); margin-top: 1px;
+  display: block; font-weight: 700; font-size: 13.5px; color: var(--text); margin-top: 1px;
 }
 
-/* Ações: zap (vermelho, grande) + ver mais (outline) */
-.mcard-actions{ display: flex; gap: 10px; margin-top: auto; }
+/* Ações: zap (verde) + ver mais (outline) */
+.mcard-actions{ display: flex; gap: 8px; margin-top: 4px; }
 .mcard-zap{
   flex: 1;
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
   background: var(--wa, #25d366); color: #fff;
-  font-weight: 800; font-size: 15px; text-transform: uppercase; letter-spacing: .01em;
-  padding: 13px 14px; border-radius: var(--r-sm);
+  font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: .02em;
+  padding: 10px 12px; border-radius: var(--r-sm);
   transition: background var(--t-fast);
 }
 .mcard-zap:hover{ background: var(--wa-dark, #1da851); color: #fff; }
-.mcard-zap svg{ width: 18px; height: 18px; flex-shrink: 0; }
+.mcard-zap svg{ width: 16px; height: 16px; flex-shrink: 0; }
 .mcard-more{
   display: inline-flex; align-items: center; justify-content: center;
-  padding: 13px 16px; border-radius: var(--r-sm);
+  padding: 10px 14px; border-radius: var(--r-sm);
   border: 1px solid var(--border); background: var(--surface);
-  color: var(--text); font-weight: 700; font-size: 14px;
+  color: var(--text); font-weight: 600; font-size: 13px;
   white-space: nowrap;
 }
 .mcard-more:hover{ border-color: var(--text-muted); color: var(--text); }
 
 @media (max-width: 640px){
   .trust-strip-inner{ font-size: 12px; gap: 6px 16px; }
-  .grid-motos{ grid-template-columns: 1fr; gap: 14px; }  /* uma moto por linha */
-  .mcard-name{ font-size: 28px; }
+  .grid-motos{ grid-template-columns: 1fr; gap: 12px; }  /* uma moto por linha */
+  .mcard-name{ font-size: 22px; }
+  .mcard-price .now{ font-size: 24px; }
   .mcard-photo{ aspect-ratio: 16 / 11; }
-  .mcard-tag .now{ font-size: 24px; }
 }
 @media (max-width: 520px){
   .btn-zap-head span{ display: none; }        /* no celular, só o ícone */
