@@ -347,8 +347,7 @@ include __DIR__ . '/../inc/header.php';
           <input type="file" name="fotos[]" id="fotos" multiple accept="image/*">
           <small>JPG, PNG ou WEBP.</small>
           <div class="foto-dica">
-            📐 <b>Tamanho ideal:</b> foto na horizontal (deitada), proporção <b>4:3</b> — ex.: <b>1200 × 900 px</b>.
-            A foto aparece <b>inteira</b> (não corta), então qualquer tamanho funciona; a 4:3 preenche o quadro sem sobrar tanta borda.
+            ✂️ Ao escolher as fotos, abre um <b>editor de recorte</b>: arraste e dê zoom pra enquadrar cada uma no formato <b>4:3</b> (o que aparece no site). Se preferir, use "Usar sem cortar".
             A <b>1ª foto</b> vira a capa — você pode reordenar depois de salvar.
           </div>
           <div id="preview" class="photo-grid mt-2"></div>
@@ -409,6 +408,44 @@ include __DIR__ . '/../inc/header.php';
     <?php endif; ?>
   </div>
 </main>
+
+<!-- Modal de recorte de foto (4:3) -->
+<div id="cropModal" class="crop-modal">
+  <div class="crop-box">
+    <div class="crop-head">
+      <strong>Enquadrar foto</strong>
+      <span id="cropCount" class="text-muted"></span>
+    </div>
+    <p class="text-sm text-muted" style="margin:-2px 0 8px;">Arraste a foto e use o zoom para enquadrar. A área dentro do quadro é a que vai aparecer.</p>
+    <div class="crop-stage" id="cropStage">
+      <img id="cropImg" alt="">
+    </div>
+    <div class="crop-zoom">
+      <span>–</span>
+      <input type="range" id="cropZoom" min="1" max="3" step="0.01" value="1">
+      <span>+</span>
+    </div>
+    <div class="crop-actions">
+      <button type="button" class="btn btn-ghost" id="cropCancel">Cancelar</button>
+      <button type="button" class="btn btn-secondary" id="cropSkip">Usar sem cortar</button>
+      <button type="button" class="btn btn-primary" id="cropOk">Cortar e usar</button>
+    </div>
+  </div>
+</div>
+
+<style>
+  .crop-modal{ display:none; position:fixed; inset:0; z-index:1000; background:rgba(0,0,0,.6); padding:16px; overflow-y:auto; }
+  .crop-modal.open{ display:flex; align-items:flex-start; justify-content:center; }
+  .crop-box{ background:var(--surface); border-radius:var(--r-lg,14px); box-shadow:var(--shadow-lg,0 20px 50px rgba(0,0,0,.3)); width:100%; max-width:520px; margin:24px auto; padding:16px; }
+  .crop-head{ display:flex; align-items:baseline; justify-content:space-between; }
+  .crop-head strong{ font-size:17px; }
+  .crop-stage{ position:relative; width:100%; aspect-ratio:4/3; background:#111; border-radius:var(--r-md); overflow:hidden; cursor:grab; touch-action:none; }
+  .crop-stage:active{ cursor:grabbing; }
+  .crop-stage img{ position:absolute; top:0; left:0; max-width:none; user-select:none; -webkit-user-drag:none; pointer-events:none; }
+  .crop-zoom{ display:flex; align-items:center; gap:10px; margin:12px 2px 4px; color:var(--text-muted); font-weight:800; }
+  .crop-zoom input{ flex:1; }
+  .crop-actions{ display:flex; gap:8px; justify-content:flex-end; margin-top:12px; flex-wrap:wrap; }
+</style>
 
 <style>
   .tag-box{ position:relative; border:1px solid var(--border); border-radius:var(--r-md); padding:8px; background:var(--surface); }
@@ -492,21 +529,127 @@ if (btnPlaca) {
   });
 }
 
-// Preview do upload
+// ===== Upload com recorte 4:3 =====
 const input = document.getElementById('fotos');
 const preview = document.getElementById('preview');
-if (input && preview) {
-  input.addEventListener('change', () => {
-    preview.innerHTML = '';
-    Array.from(input.files || []).slice(0, 5).forEach(file => {
-      const box = document.createElement('div');
-      box.className = 'photo-thumb';
-      const img = document.createElement('img');
-      img.src = URL.createObjectURL(file);
-      box.appendChild(img);
-      preview.appendChild(box);
-    });
+const OUT_W = 1200, OUT_H = 900; // saída 4:3
+
+// Cropper
+const cm      = document.getElementById('cropModal');
+const stage   = document.getElementById('cropStage');
+const cImg     = document.getElementById('cropImg');
+const zoomEl  = document.getElementById('cropZoom');
+const btnOk   = document.getElementById('cropOk');
+const btnSkip = document.getElementById('cropSkip');
+const btnCancel = document.getElementById('cropCancel');
+const cCount  = document.getElementById('cropCount');
+
+let fila = [], resultados = [], atual = 0, natW = 0, natH = 0;
+let base = 1, zoom = 1, ox = 0, oy = 0, sw = 0, sh = 0;
+
+function stageSize(){ sw = stage.clientWidth; sh = stage.clientHeight; }
+
+function aplicarTransform(){
+  const dw = natW * base * zoom, dh = natH * base * zoom;
+  // limita para a imagem sempre cobrir o quadro
+  ox = Math.min(0, Math.max(sw - dw, ox));
+  oy = Math.min(0, Math.max(sh - dh, oy));
+  cImg.style.width = dw + 'px';
+  cImg.style.height = dh + 'px';
+  cImg.style.transform = 'translate(' + ox + 'px,' + oy + 'px)';
+}
+
+function abrirCropper(file){
+  const url = URL.createObjectURL(file);
+  cImg.onload = () => {
+    natW = cImg.naturalWidth; natH = cImg.naturalHeight;
+    stageSize();
+    base = Math.max(sw / natW, sh / natH); // cobre o quadro
+    zoom = 1; zoomEl.value = '1';
+    const dw = natW * base, dh = natH * base;
+    ox = (sw - dw) / 2; oy = (sh - dh) / 2;
+    aplicarTransform();
+    cCount.textContent = (atual + 1) + ' / ' + fila.length;
+    cm.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  };
+  cImg.src = url;
+}
+
+function fecharCropper(){ cm.classList.remove('open'); document.body.style.overflow = ''; }
+
+function proxima(){
+  atual++;
+  if (atual < fila.length) abrirCropper(fila[atual]);
+  else finalizar();
+}
+
+function gerarRecorte(cb){
+  const esc = base * zoom;
+  const srcX = (-ox) / esc, srcY = (-oy) / esc;
+  const srcW = sw / esc, srcH = sh / esc;
+  const cv = document.createElement('canvas');
+  cv.width = OUT_W; cv.height = OUT_H;
+  const ctx = cv.getContext('2d');
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(cImg, srcX, srcY, srcW, srcH, 0, 0, OUT_W, OUT_H);
+  cv.toBlob(blob => {
+    const nome = (fila[atual].name || ('foto' + atual)).replace(/\.[^.]+$/, '') + '.jpg';
+    cb(new File([blob], nome, { type: 'image/jpeg' }));
+  }, 'image/jpeg', 0.9);
+}
+
+function finalizar(){
+  fecharCropper();
+  // aplica os arquivos recortados no input
+  const dt = new DataTransfer();
+  resultados.forEach(f => dt.items.add(f));
+  input.files = dt.files;
+  // preview
+  preview.innerHTML = '';
+  resultados.forEach(f => {
+    const box = document.createElement('div'); box.className = 'photo-thumb';
+    const im = document.createElement('img'); im.src = URL.createObjectURL(f);
+    box.appendChild(im); preview.appendChild(box);
   });
+}
+
+if (input) {
+  input.addEventListener('change', () => {
+    const files = Array.from(input.files || []).filter(f => f.type.startsWith('image/')).slice(0, 5);
+    if (!files.length) return;
+    fila = files; resultados = []; atual = 0;
+    abrirCropper(fila[0]);
+  });
+
+  // Zoom
+  zoomEl.addEventListener('input', () => {
+    // mantém o centro do quadro ao dar zoom
+    const cx = (sw/2 - ox), cy = (sh/2 - oy);
+    const antigo = base * zoom;
+    zoom = parseFloat(zoomEl.value);
+    const novo = base * zoom;
+    ox = sw/2 - cx * (novo/antigo);
+    oy = sh/2 - cy * (novo/antigo);
+    aplicarTransform();
+  });
+
+  // Arrastar (mouse + toque)
+  let dragging = false, px = 0, py = 0;
+  function down(x, y){ dragging = true; px = x; py = y; }
+  function move(x, y){ if(!dragging) return; ox += x - px; oy += y - py; px = x; py = y; aplicarTransform(); }
+  function up(){ dragging = false; }
+  stage.addEventListener('mousedown', e => down(e.clientX, e.clientY));
+  window.addEventListener('mousemove', e => move(e.clientX, e.clientY));
+  window.addEventListener('mouseup', up);
+  stage.addEventListener('touchstart', e => { if(e.touches[0]) down(e.touches[0].clientX, e.touches[0].clientY); }, {passive:true});
+  stage.addEventListener('touchmove', e => { if(e.touches[0]){ e.preventDefault(); move(e.touches[0].clientX, e.touches[0].clientY); } }, {passive:false});
+  stage.addEventListener('touchend', up);
+
+  btnOk.addEventListener('click', () => { gerarRecorte(f => { resultados.push(f); proxima(); }); });
+  // pular recorte: usa o arquivo original
+  btnSkip.addEventListener('click', () => { resultados.push(fila[atual]); proxima(); });
+  btnCancel.addEventListener('click', () => { fila = []; resultados = []; input.value = ''; fecharCropper(); });
 }
 
 // Máscara de km (com pontos)
