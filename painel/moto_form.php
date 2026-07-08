@@ -345,7 +345,12 @@ include __DIR__ . '/../inc/header.php';
         <div class="field">
           <label>Fotos (até 5)</label>
           <input type="file" name="fotos[]" id="fotos" multiple accept="image/*">
-          <small>JPG, PNG ou WEBP. A primeira foto envia vira CAPA automaticamente.</small>
+          <small>JPG, PNG ou WEBP.</small>
+          <div class="foto-dica">
+            📐 <b>Tamanho ideal:</b> foto na horizontal (deitada), proporção <b>4:3</b> — ex.: <b>1200 × 900 px</b>.
+            A foto aparece <b>inteira</b> (não corta), então qualquer tamanho funciona; a 4:3 preenche o quadro sem sobrar tanta borda.
+            A <b>1ª foto</b> vira a capa — você pode reordenar depois de salvar.
+          </div>
           <div id="preview" class="photo-grid mt-2"></div>
         </div>
 
@@ -423,6 +428,7 @@ include __DIR__ . '/../inc/header.php';
   .photo-actions span{ flex:1; text-align:center; padding:6px 8px; border-radius:var(--r-sm); background:rgba(255,255,255,.92); color:var(--text); font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; }
   .photo-actions span.is-cover{ background:var(--green-600,#16a34a); color:#fff; }
   .photo-actions span.disabled{ opacity:.35; }
+  .foto-dica{ margin-top:8px; padding:10px 12px; background:#eef6ff; border:1px dashed #9cc3f0; border-radius:var(--r-md); font-size:12.5px; line-height:1.5; color:var(--text-soft); }
 </style>
 <script>
 // Busca pela placa (preenche o formulário)
