@@ -118,21 +118,41 @@ include __DIR__ . '/inc/header.php';
     </section>
   <?php endif; ?>
 
-  <?php $filtrosAtivos = ($fmarca !== '' || $fano !== '' || $ordem !== 'recentes'); ?>
+  <?php
+    $countFiltros = ($fmarca !== '' ? 1 : 0) + ($fano !== '' ? 1 : 0);
+    $temAlgo = ($q !== '' || $countFiltros > 0 || $ordem !== 'recentes');
+    $ordemLabels = ['recentes'=>'Mais recentes','preco_asc'=>'Menor preço','preco_desc'=>'Maior preço','km_asc'=>'Menor km'];
+  ?>
   <form method="get" class="filterbar" id="filterForm">
-    <div class="fb-row">
-      <div class="fb-search">
+    <input type="hidden" name="ordem" id="ordemInput" value="<?= htmlspecialchars($ordem) ?>">
+
+    <div class="fb-search">
+      <input type="search" name="q" placeholder="Pesquisar..." value="<?= htmlspecialchars($q) ?>" autocomplete="off">
+      <button type="submit" class="fb-lupa" aria-label="Pesquisar">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-        <input type="search" name="q" placeholder="Buscar modelo, cor…" value="<?= htmlspecialchars($q) ?>" autocomplete="off">
-      </div>
-      <button type="button" class="fb-toggle <?= $filtrosAtivos ? 'has-active' : '' ?>" id="fbToggle" aria-expanded="<?= $filtrosAtivos ? 'true' : 'false' ?>">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16M7 12h10M10 19h4"/></svg>
-        <span>Filtros</span>
-        <?php if ($filtrosAtivos): ?><i class="fb-dot"></i><?php endif; ?>
       </button>
     </div>
 
-    <div class="fb-panel <?= $filtrosAtivos ? 'open' : '' ?>" id="fbPanel">
+    <div class="fb-controls">
+      <div class="fb-left">
+        <button type="button" class="fb-btn <?= $countFiltros ? 'has-active' : '' ?>" id="fbFilterBtn" aria-expanded="false">
+          <?php if ($countFiltros): ?><i class="fb-badge"><?= $countFiltros ?></i><?php endif; ?>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg>
+          <span>Filtrar</span>
+        </button>
+        <?php if ($temAlgo): ?>
+          <a class="fb-icon-btn" href="<?= base_url('index.php') ?>" title="Limpar filtros" aria-label="Limpar filtros">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6"/></svg>
+          </a>
+        <?php endif; ?>
+      </div>
+      <button type="button" class="fb-btn" id="fbSortBtn" aria-expanded="false">
+        <span>Ordenar</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h12M3 12h8M3 18h5M17 6v12M17 18l3-3M17 18l-3-3"/></svg>
+      </button>
+    </div>
+
+    <div class="fb-panel" id="fbFilterPanel">
       <div class="fb-field">
         <label>Marca</label>
         <select name="marca">
@@ -146,21 +166,15 @@ include __DIR__ . '/inc/header.php';
         <label>Ano</label>
         <input type="text" name="ano" placeholder="Ex: 2023" value="<?= htmlspecialchars($fano) ?>" inputmode="numeric">
       </div>
-      <div class="fb-field">
-        <label>Ordenar por</label>
-        <select name="ordem">
-          <option value="recentes"   <?= $ordem==='recentes'?'selected':'' ?>>Mais recentes</option>
-          <option value="preco_asc"  <?= $ordem==='preco_asc'?'selected':'' ?>>Menor preço</option>
-          <option value="preco_desc" <?= $ordem==='preco_desc'?'selected':'' ?>>Maior preço</option>
-          <option value="km_asc"     <?= $ordem==='km_asc'?'selected':'' ?>>Menor km</option>
-        </select>
-      </div>
       <div class="fb-actions">
         <button type="submit" class="fb-apply">Aplicar filtros</button>
-        <?php if ($q || $filtrosAtivos): ?>
-          <a href="<?= base_url('index.php') ?>" class="fb-clear">Limpar</a>
-        <?php endif; ?>
       </div>
+    </div>
+
+    <div class="fb-panel fb-sort" id="fbSortPanel">
+      <?php foreach ($ordemLabels as $val => $lab): ?>
+        <button type="button" class="fb-sort-opt <?= $ordem===$val ? 'active' : '' ?>" data-ordem="<?= $val ?>"><?= $lab ?></button>
+      <?php endforeach; ?>
     </div>
   </form>
 
@@ -171,7 +185,7 @@ include __DIR__ . '/inc/header.php';
       <p>Tente ajustar os filtros ou volte mais tarde.</p>
     </div>
   <?php else: ?>
-    <div class="mkt-count"><?= count($motos) ?> moto<?= count($motos) === 1 ? '' : 's' ?> à venda</div>
+    <div class="mkt-count"><?= count($motos) ?> moto<?= count($motos) === 1 ? '' : 's' ?> encontrada<?= count($motos) === 1 ? '' : 's' ?></div>
 
     <div class="grid-motos">
       <?php foreach ($motos as $m): ?>
@@ -249,14 +263,37 @@ include __DIR__ . '/inc/header.php';
 </main>
 
 <script>
-// Abre/fecha o painel de filtros
+// Painéis de Filtrar e Ordenar (um abre, o outro fecha)
 (function(){
-  const btn = document.getElementById('fbToggle');
-  const panel = document.getElementById('fbPanel');
-  if (!btn || !panel) return;
-  btn.addEventListener('click', () => {
+  const form   = document.getElementById('filterForm');
+  const fBtn   = document.getElementById('fbFilterBtn');
+  const sBtn   = document.getElementById('fbSortBtn');
+  const fPanel = document.getElementById('fbFilterPanel');
+  const sPanel = document.getElementById('fbSortPanel');
+  const ordem  = document.getElementById('ordemInput');
+  if (!form) return;
+
+  function toggle(panel, btn, other, otherBtn){
     const open = panel.classList.toggle('open');
     btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    other.classList.remove('open');
+    otherBtn.setAttribute('aria-expanded', 'false');
+  }
+  fBtn && fBtn.addEventListener('click', () => toggle(fPanel, fBtn, sPanel, sBtn));
+  sBtn && sBtn.addEventListener('click', () => toggle(sPanel, sBtn, fPanel, fBtn));
+
+  // Escolher ordenação aplica na hora
+  document.querySelectorAll('.fb-sort-opt').forEach(opt => {
+    opt.addEventListener('click', () => { ordem.value = opt.dataset.ordem; form.submit(); });
+  });
+
+  // Fecha ao clicar fora
+  document.addEventListener('click', (e) => {
+    if (!form.contains(e.target)) {
+      fPanel.classList.remove('open'); sPanel.classList.remove('open');
+      fBtn && fBtn.setAttribute('aria-expanded','false');
+      sBtn && sBtn.setAttribute('aria-expanded','false');
+    }
   });
 })();
 
