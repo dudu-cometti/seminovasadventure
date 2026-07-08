@@ -562,16 +562,20 @@ function aplicarTransform(){
 function abrirCropper(file){
   const url = URL.createObjectURL(file);
   cImg.onload = () => {
-    natW = cImg.naturalWidth; natH = cImg.naturalHeight;
-    stageSize();
-    base = Math.max(sw / natW, sh / natH); // cobre o quadro
-    zoom = 1; zoomEl.value = '1';
-    const dw = natW * base, dh = natH * base;
-    ox = (sw - dw) / 2; oy = (sh - dh) / 2;
-    aplicarTransform();
-    cCount.textContent = (atual + 1) + ' / ' + fila.length;
+    // Abre o modal ANTES de medir (escondido daria tamanho 0 = tela preta)
     cm.classList.add('open');
     document.body.style.overflow = 'hidden';
+    cCount.textContent = (atual + 1) + ' / ' + fila.length;
+    // mede na próxima renderização, já com o modal visível
+    requestAnimationFrame(() => {
+      natW = cImg.naturalWidth; natH = cImg.naturalHeight;
+      stageSize();
+      base = Math.max(sw / natW, sh / natH); // cobre o quadro
+      zoom = 1; zoomEl.value = '1';
+      const dw = natW * base, dh = natH * base;
+      ox = (sw - dw) / 2; oy = (sh - dh) / 2;
+      aplicarTransform();
+    });
   };
   cImg.src = url;
 }
