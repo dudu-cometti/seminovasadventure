@@ -56,7 +56,7 @@ $avatarLetter = mb_strtoupper(mb_substr(trim($user['nome'] ?? 'U'), 0, 1, 'UTF-8
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
   <link rel="icon" href="<?= base_url('favicon.ico') ?>" type="image/x-icon">
-  <link rel="stylesheet" href="<?= base_url('assets/style.css?v=2004') ?>">
+  <link rel="stylesheet" href="<?= base_url('assets/style.css?v=2005') ?>">
 </head>
 <body>
 
@@ -103,12 +103,9 @@ $avatarLetter = mb_strtoupper(mb_substr(trim($user['nome'] ?? 'U'), 0, 1, 'UTF-8
       <?php endif; ?>
     </nav>
 
+    <?php if ($isLogged): ?>
     <div class="nav-actions">
-      <?php if ($isLogged): ?>
-        <a class="btn btn-sm btn-outline" href="<?= base_url('logout.php') ?>">Sair</a>
-      <?php else: ?>
-        <a class="btn btn-sm btn-outline auth-btn-desktop" href="<?= base_url('login.php') ?>">Acessar painel</a>
-      <?php endif; ?>
+      <a class="btn btn-sm btn-outline" href="<?= base_url('logout.php') ?>">Sair</a>
       <button class="nav-toggle" type="button" id="navToggle" aria-label="Abrir menu">
         <svg fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
           <line x1="3" y1="6" x2="21" y2="6"/>
@@ -117,6 +114,7 @@ $avatarLetter = mb_strtoupper(mb_substr(trim($user['nome'] ?? 'U'), 0, 1, 'UTF-8
         </svg>
       </button>
     </div>
+    <?php endif; ?>
   </div>
 </header>
 
@@ -129,5 +127,25 @@ $avatarLetter = mb_strtoupper(mb_substr(trim($user['nome'] ?? 'U'), 0, 1, 'UTF-8
     document.addEventListener('click', (e) => {
       if (!nav.contains(e.target) && !btn.contains(e.target)) nav.classList.remove('open');
     });
+  })();
+
+  // Esconde a barra de busca ao rolar para baixo e mostra ao subir
+  (function(){
+    let lastY = window.scrollY || 0;
+    let ticking = false;
+    const THRESHOLD = 90; // só começa a esconder depois de descer um pouco
+    function update(){
+      const y = window.scrollY || 0;
+      if (y > lastY && y > THRESHOLD) {
+        document.body.classList.add('chrome-hidden');    // descendo
+      } else if (y < lastY) {
+        document.body.classList.remove('chrome-hidden');  // subindo
+      }
+      lastY = y;
+      ticking = false;
+    }
+    window.addEventListener('scroll', function(){
+      if (!ticking){ requestAnimationFrame(update); ticking = true; }
+    }, { passive: true });
   })();
 </script>

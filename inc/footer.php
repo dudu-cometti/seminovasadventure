@@ -9,6 +9,9 @@
   </p>
   <div class="footer-mini">
     © <?= date('Y') ?> <?= htmlspecialchars($nomeLoja ?? 'Adventure Motos') ?>. Todos os direitos reservados.
+    <?php if (empty($isLogged)): ?>
+      &middot; <a class="footer-admin-link" href="<?= base_url('login.php') ?>">Acesso restrito</a>
+    <?php endif; ?>
   </div>
 </footer>
 </body>
