@@ -1,0 +1,14 @@
+# Credenciais e configs locais (NUNCA versionar)
+config.local.php
+
+# Uploads de usuários (fotos das motos ficam no servidor, não no Git)
+uploads/*
+!uploads/.gitkeep
+
+# Arquivos do sistema operacional
+.DS_Store
+Thumbs.db
+
+# Logs e temporários
+*.log
+*.tmp

@@ -1,0 +1,115 @@
+<?php
+require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../inc/auth.php';
+require_login();
+
+if (!user_can('edit')) {
+    http_response_code(403);
+    echo 'Acesso negado';
+    exit;
+}
+
+$user = current_user();
+$id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+if ($id <= 0) die('ID inválido');
+
+$stmt = $pdo->prepare("SELECT * FROM motos WHERE id = ?");
+$stmt->execute([$id]);
+$moto = $stmt->fetch();
+if (!$moto) die('Moto não encontrada');
+
+$erro = '';
+$sucesso = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $valor_venda = (float)str_replace(['.', ','], ['', '.'], $_POST['valor_venda'] ?? '0');
+
+    if ($valor_venda <= 0) {
+        $erro = 'Informe o valor da venda.';
+    } else {
+        $pdo->beginTransaction();
+        try {
+            $stmt = $pdo->prepare("INSERT INTO vendas (moto_id, vendedor_id, valor_venda) VALUES (?, ?, ?)");
+            $stmt->execute([$id, $user['id'], $valor_venda]);
+
+            $stmt = $pdo->prepare("UPDATE motos SET status = 'vendida', sold_at = NOW(), updated_at = NOW() WHERE id = ?");
+            $stmt->execute([$id]);
+
+            $pdo->commit();
+            $sucesso = 'Venda registrada com sucesso!';
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            $erro = 'Erro ao registrar venda: ' . $e->getMessage();
+        }
+    }
+}
+
+$page_title = 'Registrar venda';
+include __DIR__ . '/../inc/header.php';
+?>
+
+<main class="container">
+  <div class="page" style="padding-top: var(--space-6);">
+
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Registrar venda</h1>
+        <p class="page-subtitle">
+          Moto: <strong><?= htmlspecialchars($moto['titulo'] ?: $moto['modelo']) ?></strong>
+          · <?= htmlspecialchars($moto['ano_modelo']) ?>
+          · <?= htmlspecialchars($moto['cor']) ?>
+        </p>
+      </div>
+      <a href="<?= base_url('painel/motos.php') ?>" class="btn btn-ghost">← Voltar</a>
+    </div>
+
+    <?php if ($erro): ?>
+      <div class="alert alert-error"><span>⚠</span> <?= htmlspecialchars($erro) ?></div>
+    <?php endif; ?>
+
+    <?php if ($sucesso): ?>
+      <div class="alert alert-success"><span>✓</span> <?= htmlspecialchars($sucesso) ?></div>
+      <a href="<?= base_url('painel/motos.php') ?>" class="btn btn-primary mt-3">Voltar pra lista de motos</a>
+    <?php else: ?>
+      <form method="post" class="form-card form-card-narrow">
+        <div class="card card-pad mb-4" style="background:var(--surface-2);box-shadow:none;">
+          <div class="row-between">
+            <div>
+              <div class="text-xs text-muted" style="text-transform:uppercase;letter-spacing:.05em;font-weight:700;">Preço de tabela</div>
+              <div style="font-size:22px;font-weight:900;margin-top:2px;">R$ <?= number_format((float)$moto['valor'], 2, ',', '.') ?></div>
+            </div>
+            <div style="font-size:30px;">💰</div>
+          </div>
+        </div>
+
+        <div class="field field-prefix mb-4">
+          <label>Valor da venda</label>
+          <span>R$</span>
+          <input type="text" name="valor_venda" id="valor_venda" required placeholder="0,00" inputmode="decimal" autofocus>
+          <small>Pode ser diferente do preço de tabela (após negociação).</small>
+        </div>
+
+        <div class="row" style="gap:8px;">
+          <button class="btn btn-success btn-lg" type="submit">
+            <svg fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg>
+            Confirmar venda
+          </button>
+          <a href="<?= base_url('painel/motos.php') ?>" class="btn btn-ghost btn-lg">Cancelar</a>
+        </div>
+      </form>
+    <?php endif; ?>
+  </div>
+</main>
+
+<script>
+const v = document.getElementById('valor_venda');
+if (v) {
+  v.addEventListener('input', e => {
+    let val = e.target.value.replace(/\D/g, '');
+    val = (val / 100).toFixed(2);
+    e.target.value = Number(val).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  });
+}
+</script>
+
+<?php include __DIR__ . '/../inc/footer.php'; ?>
