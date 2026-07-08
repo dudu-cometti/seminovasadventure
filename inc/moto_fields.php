@@ -53,6 +53,35 @@ if (!function_exists('moto_fotos_aplicar_ordem')) {
   }
 }
 
+/**
+ * Garante a estrutura do registro de vendas (auto-migração leve).
+ * - tabela vendas (moto_id, vendedor_id, valor_venda, created_at)
+ * - motos.sold_at (data/hora da venda)
+ * IMPORTANTE: chame ANTES de abrir transação (CREATE/ALTER dão commit implícito).
+ */
+if (!function_exists('ensure_vendas_schema')) {
+  function ensure_vendas_schema($pdo) {
+    static $done = false;
+    if ($done) return;
+    $done = true;
+    try {
+      $pdo->exec("CREATE TABLE IF NOT EXISTS vendas (
+        id           INT AUTO_INCREMENT PRIMARY KEY,
+        moto_id      INT NOT NULL,
+        vendedor_id  INT NULL,
+        valor_venda  DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+        created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        KEY idx_moto (moto_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+      $c = $pdo->query("SELECT COUNT(*) FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='motos' AND COLUMN_NAME='sold_at'")->fetchColumn();
+      if ((int)$c === 0) {
+        $pdo->exec("ALTER TABLE motos ADD COLUMN sold_at DATETIME NULL");
+      }
+    } catch (Throwable $e) { /* ignora */ }
+  }
+}
+
 /** Renumera as fotos da moto pela ordem atual (ordem, id) e fixa a capa. */
 if (!function_exists('moto_fotos_reindex')) {
   function moto_fotos_reindex($pdo, $moto_id) {
