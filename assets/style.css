@@ -1172,6 +1172,7 @@ body.chrome-hidden .mkt-toolbar{
   font-size: 13px; font-weight: 600;
 }
 .trust-strip-inner span{ display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.trust-strip .star{ color: #f4b942; font-style: normal; letter-spacing: 1px; }
 .trust-strip-inner span + span{ position: relative; }
 .trust-strip-inner span + span::before{
   content: ""; position: absolute; left: -12px; top: 50%; transform: translateY(-50%);
