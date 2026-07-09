@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../inc/auth.php';
 require_once __DIR__ . '/../inc/crm.php';
+require_once __DIR__ . '/../inc/crm_ia.php';
 require_login();
 
 header('Content-Type: application/json; charset=utf-8');
@@ -513,6 +514,138 @@ try {
       crm_registrar_interacao($pdo, $lead_id, 'sistema', 'Oportunidade dispensada pela central de oportunidades');
 
       $resp = ['ok' => true, 'msg' => 'Oportunidade dispensada'];
+      break;
+
+    case 'ia_mensagem_oportunidade':
+      if (!user_can('edit')) throw new Exception('Sem permissão');
+      $lead_id = (int)($input['lead_id'] ?? 0);
+      $moto_id = (int)($input['moto_id'] ?? 0);
+      $forcar = (bool)($input['forcar'] ?? false);
+
+      if ($lead_id <= 0) throw new Exception('Lead inválido');
+      if ($moto_id <= 0) throw new Exception('Moto inválida');
+
+      $lead = crm_lead_get($pdo, $lead_id);
+      if (!$lead) throw new Exception('Lead não encontrado');
+
+      $user = current_user();
+      if (!crm_pode_ver_lead($user, $lead)) throw new Exception('Sem acesso');
+
+      // Busca moto
+      $stmt_moto = $pdo->prepare("SELECT id, titulo, ano_modelo, quilometragem, valor, cor FROM motos WHERE id=? LIMIT 1");
+      $stmt_moto->execute([$moto_id]);
+      $moto = $stmt_moto->fetch(PDO::FETCH_ASSOC);
+      if (!$moto) throw new Exception('Moto não encontrada');
+
+      // Busca interesses do lead
+      $stmt_int = $pdo->prepare("SELECT CONCAT(marca, ' ', modelo) as interesse FROM crm_interesses WHERE lead_id=? LIMIT 3");
+      $stmt_int->execute([$lead_id]);
+      $interesses = array_column($stmt_int->fetchAll(PDO::FETCH_ASSOC), 'interesse');
+
+      // Últimas interações
+      $stmt_inter = $pdo->prepare("SELECT tipo, SUBSTR(texto, 1, 50) as resumo FROM crm_interacoes WHERE lead_id=? ORDER BY created_at DESC LIMIT 5");
+      $stmt_inter->execute([$lead_id]);
+      $ultimas_inter = [];
+      foreach ($stmt_inter->fetchAll(PDO::FETCH_ASSOC) as $i) {
+        $ultimas_inter[] = $i['tipo'] . ': ' . $i['resumo'];
+      }
+
+      // Score/motivo do match (aproximado)
+      $motivo = $input['motivo'] ?? 'cliente está procurando';
+
+      // Chama IA
+      $resultado = crm_ia_chamar($pdo, 'mensagem_oportunidade', [
+        'lead_id' => $lead_id,
+        'lead_nome' => $lead['nome'],
+        'temperatura' => $lead['temperatura'],
+        'interesses' => $interesses,
+        'moto_titulo' => $moto['titulo'],
+        'moto_ano' => $moto['ano_modelo'],
+        'moto_km' => (int)$moto['quilometragem'],
+        'moto_valor' => (float)$moto['valor'],
+        'moto_cor' => $moto['cor'],
+        'motivo_match' => $motivo,
+        'ultimas_interacoes' => $ultimas_inter,
+      ], $forcar);
+
+      $resp = $resultado;
+      break;
+
+    case 'ia_resumo_lead':
+      if (!user_can('edit')) throw new Exception('Sem permissão');
+      $lead_id = (int)($input['lead_id'] ?? 0);
+      $forcar = (bool)($input['forcar'] ?? false);
+
+      if ($lead_id <= 0) throw new Exception('Lead inválido');
+
+      $lead = crm_lead_get($pdo, $lead_id);
+      if (!$lead) throw new Exception('Lead não encontrado');
+
+      $user = current_user();
+      if (!crm_pode_ver_lead($user, $lead)) throw new Exception('Sem acesso');
+
+      // Dias na etapa atual
+      $etapa_desde = strtotime($lead['etapa_desde'] ?? $lead['created_at']);
+      $dias_etapa = ceil((time() - $etapa_desde) / 86400);
+
+      // Todas as interações
+      $stmt_inter = $pdo->prepare("SELECT tipo, texto FROM crm_interacoes WHERE lead_id=? ORDER BY created_at DESC LIMIT 20");
+      $stmt_inter->execute([$lead_id]);
+      $interacoes = [];
+      foreach ($stmt_inter->fetchAll(PDO::FETCH_ASSOC) as $i) {
+        $interacoes[] = $i['tipo'] . ': ' . substr($i['texto'], 0, 60);
+      }
+
+      // Agendamentos
+      $stmt_agd = $pdo->prepare("SELECT tipo, data_hora, status FROM crm_agendamentos WHERE lead_id=? ORDER BY data_hora DESC LIMIT 5");
+      $stmt_agd->execute([$lead_id]);
+      $agendamentos = [];
+      foreach ($stmt_agd->fetchAll(PDO::FETCH_ASSOC) as $a) {
+        $agendamentos[] = $a['tipo'] . ' ' . date('d/m', strtotime($a['data_hora'])) . ' (' . $a['status'] . ')';
+      }
+
+      // Chama IA
+      $resultado = crm_ia_chamar($pdo, 'resumo_lead', [
+        'lead_id' => $lead_id,
+        'lead_nome' => $lead['nome'],
+        'etapa' => $lead['etapa'],
+        'dias_na_etapa' => $dias_etapa,
+        'interacoes' => $interacoes,
+        'agendamentos' => $agendamentos,
+        'moto_interesse' => $lead['moto_titulo'] ?? 'nenhuma',
+        'valor_negociado' => (float)($lead['valor_negociado'] ?? 0),
+      ], $forcar);
+
+      $resp = $resultado;
+      break;
+
+    case 'ia_followup_perdido':
+      if (!user_can('edit')) throw new Exception('Sem permissão');
+      $lead_id = (int)($input['lead_id'] ?? 0);
+      $forcar = (bool)($input['forcar'] ?? false);
+
+      if ($lead_id <= 0) throw new Exception('Lead inválido');
+
+      $lead = crm_lead_get($pdo, $lead_id);
+      if (!$lead) throw new Exception('Lead não encontrado');
+      if ($lead['etapa'] !== 'perdido') throw new Exception('Lead não está perdido');
+
+      $user = current_user();
+      if (!crm_pode_ver_lead($user, $lead)) throw new Exception('Sem acesso');
+
+      // Dias desde a perda
+      $dias_perda = ceil((time() - strtotime($lead['fechado_at'])) / 86400);
+
+      // Chama IA
+      $resultado = crm_ia_chamar($pdo, 'followup_perdido', [
+        'lead_id' => $lead_id,
+        'lead_nome' => $lead['nome'],
+        'moto_titulo' => $lead['moto_titulo'] ?? 'a moto',
+        'motivo_perda' => $lead['motivo_perda'] ?? 'circunstâncias',
+        'dias_perda' => $dias_perda,
+      ], $forcar);
+
+      $resp = $resultado;
       break;
   }
 } catch (Exception $e) {

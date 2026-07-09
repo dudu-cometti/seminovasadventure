@@ -100,6 +100,21 @@ if (!function_exists('ensure_crm_schema')) {
         CONSTRAINT fk_dispensados_moto FOREIGN KEY (moto_id) REFERENCES motos(id) ON DELETE CASCADE
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
+      $pdo->exec("CREATE TABLE IF NOT EXISTS crm_ia_cache (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        tipo VARCHAR(60) NOT NULL,
+        hash CHAR(40) NOT NULL,
+        lead_id INT NULL,
+        entrada_resumo VARCHAR(255) NULL,
+        resposta LONGTEXT NOT NULL,
+        tokens_in INT NOT NULL DEFAULT 0,
+        tokens_out INT NOT NULL DEFAULT 0,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uk_tipo_hash (tipo, hash),
+        INDEX idx_lead (lead_id),
+        CONSTRAINT fk_ia_cache_lead FOREIGN KEY (lead_id) REFERENCES crm_leads(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
       // Garante settings iniciais
       $motivos_default = json_encode(['Preço', 'Comprou em outra loja', 'Sem crédito/financiamento', 'Desistiu', 'Sem retorno', 'Trocou de ideia', 'Outro']);
       $s = $pdo->prepare("SELECT COUNT(*) FROM settings WHERE key_name='crm_motivos_perda'");
@@ -108,11 +123,11 @@ if (!function_exists('ensure_crm_schema')) {
         $ins = $pdo->prepare("INSERT INTO settings (key_name, value) VALUES (?, ?)");
         $ins->execute(['crm_motivos_perda', $motivos_default]);
       }
-      foreach (['crm_pixel_id', 'crm_capi_token', 'crm_anthropic_key'] as $k) {
+      foreach (['crm_pixel_id', 'crm_capi_token', 'crm_anthropic_key', 'crm_ia_modelo'] as $k) {
         $s->execute([$k]);
         if ((int)$s->fetchColumn() === 0) {
           $ins = $pdo->prepare("INSERT INTO settings (key_name, value) VALUES (?, ?)");
-          $ins->execute([$k, '']);
+          $ins->execute([$k, ($k === 'crm_ia_modelo' ? 'claude-haiku-4-5-20251001' : '')]);
         }
       }
     } catch (Throwable $e) { /* ignora */ }
