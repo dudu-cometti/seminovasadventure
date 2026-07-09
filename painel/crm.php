@@ -61,6 +61,37 @@ $page_title = 'CRM';
 include __DIR__ . '/../inc/header.php';
 ?>
 
+<script>
+// Funções essenciais que precisam estar disponíveis para onclick
+function abrirModalNovoLead() {
+  const modal = document.getElementById('modal-novo-lead');
+  if (modal) modal.style.display = 'flex';
+}
+function fecharModalNovoLead() {
+  const modal = document.getElementById('modal-novo-lead');
+  if (modal) modal.style.display = 'none';
+  const form = document.getElementById('form-novo-lead');
+  if (form) form.reset();
+  const aviso = document.getElementById('dedup-aviso');
+  if (aviso) aviso.style.display = 'none';
+}
+function fecharModalPerda() {
+  const modal = document.getElementById('modal-confirma-perda');
+  if (modal) modal.style.display = 'none';
+}
+function fecharModalFechado() {
+  const modal = document.getElementById('modal-confirma-fechado');
+  if (modal) modal.style.display = 'none';
+}
+function importarVendas() {
+  if (!confirm('Importar compradores do histórico de vendas?')) return;
+  alert('Importação em desenvolvimento...');
+}
+function limparFiltros() {
+  window.location = '<?= base_url('painel/crm.php') ?>';
+}
+</script>
+
 <main class="container" style="padding: var(--space-4) 0;">
   <div class="page">
 
