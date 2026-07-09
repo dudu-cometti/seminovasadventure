@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../inc/auth.php';
+require_once __DIR__ . '/../inc/crm.php';
 require_login();
 
 $user = current_user();
@@ -76,6 +77,19 @@ $stmtSerie = $pdo->prepare("
 ");
 $stmtSerie->execute([$deDT, $ateDT]);
 $serieRaw = $stmtSerie->fetchAll();
+
+// Estatísticas do CRM
+$crm_novos = 0;
+$crm_negociacao = 0;
+$crm_fechados_mes = 0;
+try {
+  ensure_crm_schema($pdo);
+  $crm_novos = (int)$pdo->query("SELECT COUNT(*) FROM crm_leads WHERE etapa='novo'")->fetchColumn();
+  $crm_negociacao = (int)$pdo->query("SELECT COUNT(*) FROM crm_leads WHERE etapa IN ('contato','negociacao','proposta')")->fetchColumn();
+  $stmtCRM = $pdo->prepare("SELECT COUNT(*) FROM crm_leads WHERE etapa='fechado' AND created_at BETWEEN ? AND ?");
+  $stmtCRM->execute([$deDT, $ateDT]);
+  $crm_fechados_mes = (int)$stmtCRM->fetchColumn();
+} catch (Throwable $e) {}
 
 // Monta série completa com zero nos dias sem venda
 $serie = [];
@@ -186,6 +200,28 @@ include __DIR__ . '/../inc/header.php';
         <div class="stat-label">Disp / Resv / Vend</div>
         <div class="stat-value" style="font-size:22px;"><?= $disp ?> / <?= $resv ?> / <?= $vend ?></div>
         <div class="stat-sub">estoque atual</div>
+      </div>
+    </div>
+
+    <!-- Resumo CRM -->
+    <div class="card card-pad mb-6">
+      <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:var(--space-4);">
+        <h2 style="font-size:16px;margin:0;">CRM — Pipeline de Vendas</h2>
+        <a href="<?= base_url('painel/crm.php') ?>" class="btn btn-ghost" style="font-size:12px;">Ver pipeline →</a>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:var(--space-3);">
+        <div style="background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:var(--space-3);">
+          <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:4px;">Leads Novos</div>
+          <div style="font-size:28px;font-weight:900;color:var(--ink);"><?= $crm_novos ?></div>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:var(--space-3);">
+          <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:4px;">Em Negociação</div>
+          <div style="font-size:28px;font-weight:900;color:var(--red);"><?= $crm_negociacao ?></div>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:var(--space-3);">
+          <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:4px;">Fechados (<?= htmlspecialchars($periodLabel) ?>)</div>
+          <div style="font-size:28px;font-weight:900;color:var(--ok);"><?= $crm_fechados_mes ?></div>
+        </div>
       </div>
     </div>
 

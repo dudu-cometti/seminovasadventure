@@ -49,6 +49,16 @@ $current = basename($_SERVER['SCRIPT_NAME'] ?? '');
 $inPainel = (strpos($_SERVER['SCRIPT_NAME'] ?? '', '/painel/') !== false);
 
 $avatarLetter = mb_strtoupper(mb_substr(trim($user['nome'] ?? 'U'), 0, 1, 'UTF-8'), 'UTF-8');
+
+// Badge CRM - leads novos
+$crmBadge = 0;
+if ($isLogged && function_exists('crm_badge_novos')) {
+  try {
+    require_once __DIR__ . '/crm.php';
+    ensure_crm_schema($pdo);
+    $crmBadge = crm_badge_novos($pdo, $user);
+  } catch (Throwable $e) {}
+}
 ?>
 <!doctype html>
 <html lang="pt-br">
@@ -63,7 +73,7 @@ $avatarLetter = mb_strtoupper(mb_substr(trim($user['nome'] ?? 'U'), 0, 1, 'UTF-8
   <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 
   <link rel="icon" href="<?= base_url('favicon.ico') ?>" type="image/x-icon">
-  <link rel="stylesheet" href="<?= base_url('assets/style.css?v=2019') ?>">
+  <link rel="stylesheet" href="<?= base_url('assets/style.css?v=2020') ?>">
 </head>
 <body>
 
@@ -90,6 +100,14 @@ $avatarLetter = mb_strtoupper(mb_substr(trim($user['nome'] ?? 'U'), 0, 1, 'UTF-8
         <a href="<?= base_url('index.php') ?>" class="<?= $current === 'index.php' ? 'active' : '' ?>">Marketplace</a>
         <a href="<?= base_url('painel/dashboard.php') ?>" class="<?= $current === 'dashboard.php' ? 'active' : '' ?>">Dashboard</a>
         <a href="<?= base_url('painel/motos.php') ?>" class="<?= ($current === 'motos.php' || $current === 'moto_form.php') ? 'active' : '' ?>">Motos</a>
+        <a href="<?= base_url('painel/crm.php') ?>" class="<?= ($current === 'crm.php' || $current === 'crm_lead.php') ? 'active' : '' ?>" style="position: relative;">
+          CRM
+          <?php if ($crmBadge > 0): ?>
+            <span style="position: absolute; top: -2px; right: -8px; background: var(--red); color: white; font-size: 10px; font-weight: 700; padding: 2px 5px; border-radius: 10px; min-width: 16px; text-align: center;">
+              <?= $crmBadge ?>
+            </span>
+          <?php endif; ?>
+        </a>
         <a href="<?= base_url('painel/analytics.php') ?>" class="<?= $current === 'analytics.php' ? 'active' : '' ?>">Analytics</a>
 
         <?php if ($isGerente || $canUsers): ?>

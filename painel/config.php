@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../inc/auth.php';
+require_once __DIR__ . '/../inc/crm.php';
 require_login();
 require_role('gerente');
 
@@ -41,6 +42,10 @@ $faixa3          = setting_get($pdo, 'faixa_3', 'Financiamento e troca na hora')
 $nomeLoja        = setting_get($pdo, 'marketplace_nome', 'Adventure Motos');
 $cidadeLoja   = setting_get($pdo, 'marketplace_cidade', 'São Silvano - ES');
 $placaToken   = setting_get($pdo, 'placa_api_token', '');
+$crm_pixel_id = setting_get($pdo, 'crm_pixel_id', '');
+$crm_capi_token = setting_get($pdo, 'crm_capi_token', '');
+$crm_anthropic_key = setting_get($pdo, 'crm_anthropic_key', '');
+$crm_motivos_perda = setting_get($pdo, 'crm_motivos_perda', '["Preço","Comprou em outra loja","Sem crédito/financiamento","Desistiu","Sem retorno","Trocou de ideia","Outro"]');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   try {
@@ -124,6 +129,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (!empty($_FILES['banner_mobile']['tmp_name'])) {
       $banner_mobile = $subirBanner('banner_mobile', 'banner_mobile');
       setting_set($pdo, 'banner_mobile', $banner_mobile);
+    }
+
+    // Configurações CRM
+    ensure_crm_schema($pdo);
+    if (isset($_POST['crm_pixel_id'])) {
+      $crm_pixel_id = trim($_POST['crm_pixel_id']);
+      setting_set($pdo, 'crm_pixel_id', $crm_pixel_id);
+    }
+    if (isset($_POST['crm_capi_token'])) {
+      $crm_capi_token = trim($_POST['crm_capi_token']);
+      setting_set($pdo, 'crm_capi_token', $crm_capi_token);
+    }
+    if (isset($_POST['crm_anthropic_key'])) {
+      $crm_anthropic_key = trim($_POST['crm_anthropic_key']);
+      setting_set($pdo, 'crm_anthropic_key', $crm_anthropic_key);
+    }
+    if (isset($_POST['crm_motivos_perda'])) {
+      $motivos_arr = array_filter(array_map('trim', explode("\n", $_POST['crm_motivos_perda'])), fn($m) => !empty($m));
+      $crm_motivos_perda = json_encode(array_values($motivos_arr));
+      setting_set($pdo, 'crm_motivos_perda', $crm_motivos_perda);
     }
 
     $ok = 'Configurações salvas com sucesso.';
@@ -231,6 +256,40 @@ include __DIR__ . '/../inc/header.php';
               </div>
               <label class="check mt-2"><input type="checkbox" name="banner_mobile_remover" value="1"><span>Remover</span></label>
             <?php endif; ?>
+          </div>
+        </div>
+
+        <div class="field" style="padding-top:12px;border-top:1px solid var(--border-soft);">
+          <label style="font-size:15px;font-weight:800;">CRM / Integrações</label>
+          <p class="text-muted" style="font-size:13px;margin-bottom:var(--space-4);">Configure integrações externas para o CRM.</p>
+
+          <div class="form-grid form-grid-1">
+            <div class="field mb-4">
+              <label>Meta Pixel ID <span class="text-muted" style="font-weight:500;">(opcional)</span></label>
+              <input type="text" name="crm_pixel_id" placeholder="123456789" value="<?= htmlspecialchars($crm_pixel_id) ?>" autocomplete="off">
+              <small>ID do Meta Pixel para rastreamento de conversões. Será implementado na Fase 2.</small>
+            </div>
+
+            <div class="field mb-4">
+              <label>Conversions API Token <span class="text-muted" style="font-weight:500;">(opcional)</span></label>
+              <input type="password" name="crm_capi_token" placeholder="••••••••" value="<?= htmlspecialchars($crm_capi_token) ?>" autocomplete="off">
+              <small>Token da Meta Conversions API. Será implementado na Fase 2.</small>
+            </div>
+
+            <div class="field mb-4">
+              <label>Chave Anthropic <span class="text-muted" style="font-weight:500;">(opcional)</span></label>
+              <input type="password" name="crm_anthropic_key" placeholder="sk-••••••••" value="<?= htmlspecialchars($crm_anthropic_key) ?>" autocomplete="off">
+              <small>Chave de API da Anthropic para IA. Será implementada na Fase 6.</small>
+            </div>
+
+            <div class="field mb-4">
+              <label>Motivos de Perda <span class="text-muted" style="font-weight:500;">(um por linha)</span></label>
+              <textarea name="crm_motivos_perda" rows="4" style="font-family:monospace;"><?php
+                $motivos = json_decode($crm_motivos_perda, true) ?: [];
+                echo htmlspecialchars(implode("\n", $motivos));
+              ?></textarea>
+              <small>Motivos disponíveis ao marcar um lead como perdido.</small>
+            </div>
           </div>
         </div>
 
