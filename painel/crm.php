@@ -333,6 +333,13 @@ include __DIR__ . '/../inc/header.php';
 </style>
 
 <script>
+// CSRF token helper
+function addCsrfToken(fd) {
+  const token = document.querySelector('meta[name="csrf-token"]')?.content || '';
+  if (token) fd.append('_csrf', token);
+  return fd;
+}
+
 function abrirModalNovoLead() {
   document.getElementById('modal-novo-lead').style.display = 'flex';
 }
@@ -355,10 +362,14 @@ function checarTelefone() {
   const tel = document.getElementById('telefone-modal').value;
   if (!tel) return;
 
+  const fd = new FormData();
+  fd.append('acao', 'checar_telefone');
+  fd.append('telefone', tel);
+  addCsrfToken(fd);
+
   fetch('<?= base_url('painel/crm_actions.php') ?>', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: 'acao=checar_telefone&telefone=' + encodeURIComponent(tel)
+    body: fd
   })
   .then(r => r.json())
   .then(d => {
@@ -377,6 +388,7 @@ function salvarNovoLead(e) {
   e.preventDefault();
   const fd = new FormData(document.getElementById('form-novo-lead'));
   fd.append('acao', 'criar_lead');
+  addCsrfToken(fd);
 
   fetch('<?= base_url('painel/crm_actions.php') ?>', {
     method: 'POST',
@@ -440,6 +452,7 @@ function moverLead(leadId, etapa) {
   fd.append('acao', 'mover');
   fd.append('lead_id', leadId);
   fd.append('etapa', etapa);
+  addCsrfToken(fd);
 
   fetch('<?= base_url('painel/crm_actions.php') ?>', {
     method: 'POST',
@@ -461,6 +474,7 @@ function confirmarPerda(e) {
   fd.append('acao', 'mover');
   fd.append('lead_id', document.getElementById('lead-id-perda').value);
   fd.append('etapa', 'perdido');
+  addCsrfToken(fd);
 
   fetch('<?= base_url('painel/crm_actions.php') ?>', {
     method: 'POST',
@@ -483,6 +497,7 @@ function confirmarFechado(e) {
   fd.append('lead_id', document.getElementById('lead-id-fechado').value);
   fd.append('etapa', 'fechado');
   fd.append('valor_negociado', document.getElementById('valor-fechado').value);
+  addCsrfToken(fd);
 
   fetch('<?= base_url('painel/crm_actions.php') ?>', {
     method: 'POST',
@@ -511,6 +526,7 @@ function ciclarTemperatura(leadId) {
   fd.append('acao', 'temperatura');
   fd.append('lead_id', leadId);
   fd.append('temperatura', prox);
+  addCsrfToken(fd);
 
   fetch('<?= base_url('painel/crm_actions.php') ?>', {
     method: 'POST',
@@ -531,6 +547,7 @@ function abrirWhatsApp(leadId, tel) {
   fd.append('lead_id', leadId);
   fd.append('tipo', 'whatsapp');
   fd.append('texto', 'Clicou para chamar no WhatsApp');
+  addCsrfToken(fd);
 
   fetch('<?= base_url('painel/crm_actions.php') ?>', {
     method: 'POST',
@@ -549,6 +566,7 @@ function importarVendas() {
 
   const fd = new FormData();
   fd.append('acao', 'importar_vendas');
+  addCsrfToken(fd);
 
   fetch('<?= base_url('painel/crm_actions.php') ?>', {
     method: 'POST',

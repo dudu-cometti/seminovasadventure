@@ -58,9 +58,14 @@ include __DIR__ . '/../inc/header.php';
 
         <!-- Header do Lead -->
         <div style="background: white; border: 1px solid var(--line); border-radius: 8px; padding: var(--space-4); margin-bottom: var(--space-4);">
-          <h1 style="margin: 0 0 var(--space-2) 0; font-size: 28px; font-family: 'Big Shoulders Display', sans-serif;">
-            <?= htmlspecialchars($lead['nome']) ?>
-          </h1>
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--space-2);">
+            <h1 style="margin: 0; font-size: 28px; font-family: 'Big Shoulders Display', sans-serif;">
+              <?= htmlspecialchars($lead['nome']) ?>
+            </h1>
+            <button class="btn btn-ghost" style="font-size: 12px; padding: 6px 12px;" onclick="abrirModalEditarLead()">
+              ✏️ Editar
+            </button>
+          </div>
           <div style="font-family: 'JetBrains Mono', monospace; font-size: 14px; color: var(--muted); margin-bottom: var(--space-2);">
             📱 <?= htmlspecialchars(crm_formata_telefone($lead['telefone'])) ?>
             <?php if ($lead['email']): ?>
@@ -357,7 +362,35 @@ include __DIR__ . '/../inc/header.php';
   </div>
 </div>
 
+<!-- Modal Editar Lead -->
+<div id="modal-editar-lead" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+  <div style="background: white; border-radius: 12px; padding: var(--space-6); width: 90%; max-width: 400px;">
+    <h2 style="margin-top: 0; margin-bottom: var(--space-4);">Editar lead</h2>
+    <form id="form-editar-lead" onsubmit="salvarEdicaoLead(event)">
+      <div class="field mb-4">
+        <label>Nome</label>
+        <input type="text" id="editar-nome" name="nome" required placeholder="Nome do lead">
+      </div>
+      <div class="field mb-4">
+        <label>E-mail</label>
+        <input type="email" id="editar-email" name="email" placeholder="email@exemplo.com">
+      </div>
+      <div style="display: flex; gap: var(--space-2); justify-content: flex-end;">
+        <button type="button" class="btn btn-ghost" onclick="fecharModalEditarLead()">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Salvar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
+// CSRF token helper
+function addCsrfToken(fd) {
+  const token = document.querySelector('meta[name="csrf-token"]')?.content || '';
+  if (token) fd.append('_csrf', token);
+  return fd;
+}
+
 function mudarEtapa(etapa) {
   if (etapa === 'perdido') {
     alert('Para mover para Perdido, use o painel Kanban');
@@ -368,6 +401,7 @@ function mudarEtapa(etapa) {
   fd.append('lead_id', <?= (int)$lead_id ?>);
   fd.append('etapa', etapa);
 
+  addCsrfToken(fd);
   fetch('<?= base_url('painel/crm_actions.php') ?>', {
     method: 'POST',
     body: fd
@@ -390,6 +424,7 @@ function ciclarTemperatura(leadId) {
   fd.append('lead_id', leadId);
   fd.append('temperatura', prox);
 
+  addCsrfToken(fd);
   fetch('<?= base_url('painel/crm_actions.php') ?>', {
     method: 'POST',
     body: fd
@@ -406,6 +441,7 @@ function atribuirVendedor(vendedor_id) {
   fd.append('lead_id', <?= (int)$lead_id ?>);
   fd.append('vendedor_id', vendedor_id);
 
+  addCsrfToken(fd);
   fetch('<?= base_url('painel/crm_actions.php') ?>', {
     method: 'POST',
     body: fd
@@ -425,6 +461,7 @@ function atualizarValor(valor) {
   fd.append('lead_id', <?= (int)$lead_id ?>);
   fd.append('valor', valor_num);
 
+  addCsrfToken(fd);
   fetch('<?= base_url('painel/crm_actions.php') ?>', {
     method: 'POST',
     body: fd
@@ -441,6 +478,7 @@ function salvarInteracao(e) {
   fd.append('acao', 'nova_interacao');
   fd.append('lead_id', <?= (int)$lead_id ?>);
 
+  addCsrfToken(fd);
   fetch('<?= base_url('painel/crm_actions.php') ?>', {
     method: 'POST',
     body: fd
@@ -458,6 +496,7 @@ function salvarInteresse(e) {
   fd.append('acao', 'salvar_interesse');
   fd.append('lead_id', <?= (int)$lead_id ?>);
 
+  addCsrfToken(fd);
   fetch('<?= base_url('painel/crm_actions.php') ?>', {
     method: 'POST',
     body: fd
@@ -479,6 +518,7 @@ function excluirInteresse(interesse_id) {
   fd.append('acao', 'excluir_interesse');
   fd.append('interest_id', interesse_id);
 
+  addCsrfToken(fd);
   fetch('<?= base_url('painel/crm_actions.php') ?>', {
     method: 'POST',
     body: fd
@@ -496,6 +536,7 @@ function salvarAgendamento(e) {
   fd.append('acao', 'novo_agendamento');
   fd.append('lead_id', <?= (int)$lead_id ?>);
 
+  addCsrfToken(fd);
   fetch('<?= base_url('painel/crm_actions.php') ?>', {
     method: 'POST',
     body: fd
@@ -516,6 +557,7 @@ function atualizarAgendamento(agenda_id, status) {
   fd.append('agenda_id', agenda_id);
   fd.append('status', status);
 
+  addCsrfToken(fd);
   fetch('<?= base_url('painel/crm_actions.php') ?>', {
     method: 'POST',
     body: fd
@@ -542,6 +584,7 @@ function confirmarTrocarMoto(e) {
   fd.append('lead_id', <?= (int)$lead_id ?>);
   fd.append('moto_id', moto_id);
 
+  addCsrfToken(fd);
   fetch('<?= base_url('painel/crm_actions.php') ?>', {
     method: 'POST',
     body: fd
@@ -561,6 +604,7 @@ function abrirWhatsApp(tel) {
   fd.append('tipo', 'whatsapp');
   fd.append('texto', 'Clicou para chamar no WhatsApp');
 
+  addCsrfToken(fd);
   fetch('<?= base_url('painel/crm_actions.php') ?>', {
     method: 'POST',
     body: fd
@@ -581,6 +625,7 @@ function excluirLead() {
   fd.append('acao', 'excluir_lead');
   fd.append('lead_id', <?= (int)$lead_id ?>);
 
+  addCsrfToken(fd);
   fetch('<?= base_url('painel/crm_actions.php') ?>', {
     method: 'POST',
     body: fd
@@ -592,8 +637,58 @@ function excluirLead() {
   });
 }
 
+function abrirModalEditarLead() {
+  const modal = document.getElementById('modal-editar-lead');
+  const nomeInput = document.getElementById('editar-nome');
+  const emailInput = document.getElementById('editar-email');
+
+  nomeInput.value = '<?= htmlspecialchars($lead['nome'] ?? '', ENT_QUOTES) ?>';
+  emailInput.value = '<?= htmlspecialchars($lead['email'] ?? '', ENT_QUOTES) ?>';
+
+  modal.style.display = 'flex';
+}
+
+function fecharModalEditarLead() {
+  const modal = document.getElementById('modal-editar-lead');
+  modal.style.display = 'none';
+}
+
+function salvarEdicaoLead(event) {
+  event.preventDefault();
+
+  const nome = document.getElementById('editar-nome').value.trim();
+  const email = document.getElementById('editar-email').value.trim();
+
+  if (!nome) {
+    alert('Nome é obrigatório');
+    return;
+  }
+
+  const fd = new FormData();
+  fd.append('acao', 'editar_lead');
+  fd.append('lead_id', <?= (int)$lead_id ?>);
+  fd.append('nome', nome);
+  fd.append('email', email);
+
+  addCsrfToken(fd);
+  fetch('<?= base_url('painel/crm_actions.php') ?>', {
+    method: 'POST',
+    body: fd
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.ok) {
+      fecharModalEditarLead();
+      location.reload();
+    } else alert('Erro: ' + d.msg);
+  });
+}
+
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') fecharModalTrocarMoto();
+  if (e.key === 'Escape') {
+    fecharModalTrocarMoto();
+    fecharModalEditarLead();
+  }
 });
 </script>
 

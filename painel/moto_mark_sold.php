@@ -69,10 +69,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $venda_id = $pdo->lastInsertId();
             $pdo->commit();
 
-            // Integração CRM: fecha o lead correspondente
-            crm_on_venda_registrada($pdo, $venda_id);
-
             $sucesso = 'Venda registrada com sucesso!';
+
+            // Integração CRM: fecha o lead correspondente (falha não quebra a venda)
+            try {
+              crm_on_venda_registrada($pdo, $venda_id);
+            } catch (Throwable $crm_err) {}
         } catch (Exception $e) {
             $pdo->rollBack();
             $erro = 'Erro ao registrar venda: ' . $e->getMessage();

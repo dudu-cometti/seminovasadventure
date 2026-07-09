@@ -2,6 +2,12 @@
 if (!isset($page_title)) $page_title = '';
 require_once __DIR__ . '/../config.php';
 
+// CSRF token generation
+if (!isset($_SESSION['csrf_token'])) {
+  $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+$csrf_token = $_SESSION['csrf_token'];
+
 $user = function_exists('current_user') ? current_user() : null;
 $isLogged  = (bool)$user;
 $role      = $user['role'] ?? '';
@@ -74,6 +80,9 @@ if ($isLogged && function_exists('crm_badge_novos')) {
 
   <link rel="icon" href="<?= base_url('favicon.ico') ?>" type="image/x-icon">
   <link rel="stylesheet" href="<?= base_url('assets/style.css?v=2020') ?>">
+  <?php if ($isLogged): ?>
+    <meta name="csrf-token" content="<?= htmlspecialchars($csrf_token) ?>">
+  <?php endif; ?>
 </head>
 <body>
 

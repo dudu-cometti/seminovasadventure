@@ -6,6 +6,14 @@ require_login();
 
 header('Content-Type: application/json; charset=utf-8');
 
+// CSRF validation
+$csrf = $_POST['_csrf'] ?? '';
+if ($csrf !== ($_SESSION['csrf_token'] ?? '')) {
+  http_response_code(403);
+  echo json_encode(['ok' => false, 'msg' => 'CSRF token inválido']);
+  exit;
+}
+
 ensure_crm_schema($pdo);
 
 $resp = ['ok' => false, 'msg' => 'Ação inválida'];

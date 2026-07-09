@@ -173,49 +173,58 @@ Ainda assim, o `criar_banco_novo.sql` já está atualizado com tudo.
 
 ## 8. CRM — Pipeline de Vendas
 
-Sistema de gestão de leads integrado. Rastreia prospects desde primeiro contato até fechamento.
+Sistema de gestão de leads integrado. Rastreia prospects desde primeiro contato até fechamento da venda.
 
-### Tabelas (auto-criadas via `ensure_crm_schema`)
-- **crm_leads** — leads/prospects (nome, telefone, email, etapa, temperatura, valor_negociado, motivo_perda, origem, etc.)
-- **crm_interacoes** — timeline (nota, ligação, WhatsApp, visita, proposta, email, sistema)
+### Tabelas (auto-criadas via `ensure_crm_schema()`)
+- **crm_leads** — leads/prospects (nome, telefone, email, etapa, temperatura, valor_negociado, motivo_perda, origem, venda_id, etc.)
+- **crm_interacoes** — timeline de contatos (nota, ligação, WhatsApp, visita, proposta, email, sistema)
 - **crm_interesses** — preferências genéricas (marca, modelo, ano, valor, km)
 - **crm_agendamentos** — agendamentos (ligação, visita, test-ride, entrega, outro)
 
-### Etapas do funil
-1. **Novo** — lead recém-criado
-2. **Em contato** — abordagem inicial
-3. **Negociação** — cliente interessado
-4. **Proposta** — proposta enviada
-5. **Fechado** — venda registrada
-6. **Perdido** — lead descartado (motivo obrigatório)
+Auto-migração no primeiro acesso (sem SQL manual).
+
+### Arquivos principais
+- **`inc/crm.php`** — Funções de negócio (schema, get/create/move/registrar, dedup telefone, import compradores)
+- **`painel/crm.php`** — Kanban pipeline com drag & drop, filtros, busca, importação de vendas
+- **`painel/crm_lead.php?id=N`** — Ficha completa: header com edit button, stepper de etapas, moto de interesse (com trocar), timeline completa, agendamentos, sidebar com vendedor/valor/contatos
+- **`painel/crm_actions.php`** — Endpoint AJAX com CSRF validation (14 ações: mover etapa, registrar interação, alterar temperatura, atribuir vendedor, salvar valor, trocar moto, gerenciar interesse, agendar, editar lead, excluir lead, etc.)
+
+### Fluxo de etapas (funil de vendas)
+1. **Novo** — lead recém-criado (manual ou importado)
+2. **Em contato** — primeira abordagem/contato feito
+3. **Negociação** — cliente interessado, detalhes sendo discutidos
+4. **Proposta** — proposta enviada/apresentada
+5. **Fechado** — venda registrada (com valor_negociado + data fechamento)
+6. **Perdido** — lead descartado (motivo obrigatório, selecionável)
 
 ### Temperatura
 - 🔥 **Quente** — alta probabilidade de compra
 - 🌡️ **Morno** — interesse moderado
-- ❄️ **Frio** — baixa probabilidade
-
-### Páginas
-- **`/painel/crm.php`** — Kanban pipeline com drag & drop, filtros, importação
-- **`/painel/crm_lead.php?id=N`** — Ficha completa com timeline, agendamentos, sidebar
-- **`/painel/crm_actions.php`** — Endpoint AJAX (14 ações)
+- ❄️ **Frio** — baixa probabilidade (requer acompanhamento)
 
 ### Permissões
-- **Gerente** — todos os leads, importa, configura integrações
-- **Vendedor** — seus leads + sem vendedor atribuído
+- **Gerente** — todos os leads, importa compradores, configura integrações (Painel → Configurações)
+- **Vendedor** — seus leads + leads sem vendedor atribuído; dedup avisa se telefone existe
 
 ### Integração com vendas
-Ao registrar venda em `moto_mark_sold.php`:
-- Busca lead ativo com telefone do cliente OU com moto vendida
-- Move para "Fechado" automaticamente
-- Vincula via `venda_id`
-- Registra interação `sistema`
-- Falhas do CRM nunca afetam a venda (try/catch)
+Ao registrar venda em `painel/moto_mark_sold.php`:
+- Após INSERT em vendas, chama `crm_on_venda_registrada($pdo, $vendaId)` em try/catch
+- Busca lead ativo com telefone do cliente OU com moto_id
+- Move automaticamente para "Fechado" com venda_id + registra interação sistema
+- **Importante:** falhas do CRM nunca afetam/quebram o fluxo de venda
 
-### Configurações (painel/config.php, gerente)
-- **Meta Pixel ID** — rastreamento (Fase 2)
-- **Conversions API Token** — Meta CAPI (Fase 2)
-- **Chave Anthropic** — IA (Fase futura)
-- **Motivos de perda** — lista editável (JSON em DB)
+### Segurança (CSRF + SQL)
+- Token CSRF gerado em session (`inc/header.php`), output em meta tag, appended em FormData antes de fetch
+- Validação de CSRF em `crm_actions.php` (linha 9-14)
+- Prepared statements em 100% de queries
+- htmlspecialchars() em saída dinâmica
+- Permissões por vendedor (vendedor A não acessa lead do B via URL/AJAX)
+
+### Configurações (Painel → Configurações, gerente)
+- **Meta Pixel ID** — para rastreamento de conversões (implementado em Fase 2)
+- **Conversions API Token** — Meta CAPI (implementado em Fase 2)
+- **Chave Anthropic** — IA de oportunidades (implementado em Fase futura)
+- **Motivos de perda** — lista editável (um por linha, salva como JSON em DB)
 
 ---
 
@@ -254,65 +263,7 @@ Passo a passo para uma nova loja (ex.: "Loja XYZ"):
 
 ---
 
-## 9. CRM — Pipeline de Vendas
-
-Sistema de gestão de leads integrado ao marketplace. Permite rastreamento de prospects
-desde o primeiro contato até o fechamento da venda.
-
-### Tabelas
-- **crm_leads** — leads/prospects (nome, telefone, email, etapa, temperatura, etc.)
-- **crm_interacoes** — timeline de contatos (nota, ligação, WhatsApp, visita, proposta, email)
-- **crm_interesses** — preferências genéricas do lead (marca, modelo, ano, valor, km)
-- **crm_agendamentos** — agendamentos (ligação, visita, test-ride, entrega)
-
-Auto-criadas via `ensure_crm_schema()` no primeiro acesso (sem SQL manual).
-
-### Fluxo de etapas
-1. **Novo** — lead recém-criado (manual ou importado)
-2. **Em contato** — primeira abordagem feita
-3. **Negociação** — cliente interessado, detalhes sendo discutidos
-4. **Proposta** — proposta enviada/apresentada
-5. **Fechado** — venda registrada
-6. **Perdido** — lead descartado (obrigatório informar motivo)
-
-### Temperatura
-- 🔥 **Quente** — lead com alta probabilidade de compra
-- 🌡️ **Morno** — interesse moderado
-- ❄️ **Frio** — baixa probabilidade (acompanhar)
-
-### Páginas
-- **`/painel/crm.php`** — Pipeline Kanban com drag & drop, filtros, importação de compradores
-- **`/painel/crm_lead.php?id=N`** — Ficha completa do lead com timeline, stepper de etapas,
-  agendamentos, interesse genérico, vendedor responsável, valor negociado
-- **`/painel/crm_actions.php`** — Endpoint AJAX para todas as operações
-
-### Permissões
-- **Gerente** — acesso a todos os leads, importa clientes, configura integrações
-- **Vendedor** — vê apenas seus leads + leads sem atribuição; pode se auto-atribuir
-
-### Integração com vendas
-Ao registrar uma venda em `painel/moto_mark_sold.php`, o sistema automaticamente:
-- Busca lead ativo com o telefone do cliente OU com a moto vendida
-- Move lead para etapa "Fechado"
-- Vincula venda via `venda_id`
-- Registra interação `sistema` documentando o fechamento
-
-Falhas do CRM nunca afetam o fluxo de venda (try/catch).
-
-### Integração com marketplace
-Clique em "Chamar no WhatsApp" (cards da vitrine ou detalhe) registra interação
-`whatsapp` no CRM (rastreamento automático em fases futuras).
-
-### Configurações
-Em `painel/config.php` (gerente):
-- **Meta Pixel ID** — para rastreamento de conversões (Fase 2)
-- **Conversions API Token** — Meta CAPI (Fase 2)
-- **Chave Anthropic** — para IA de oportunidades (Fase futura)
-- **Motivos de perda** — lista editável (um por linha)
-
----
-
-## 10. Contatos / referências
+## 9. Contatos / referências
 
 - Repositório: https://github.com/dudu-cometti/seminovasadventure
 - Site (Adventure): https://seminovas.comettiads.com
