@@ -1,6 +1,8 @@
 <?php
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../inc/auth.php';
+require_once __DIR__ . '/../inc/crm.php';
+require_once __DIR__ . '/../inc/crm_match.php';
 require_login();
 
 if (!function_exists('user_can')) { function user_can($p) { return true; } }
@@ -136,6 +138,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt->execute([$id]);
     $moto = $stmt->fetch();
     $ok = 'Salvo com sucesso!';
+
+    // ===== GANCHO: Quando moto ENTRA em 'disponivel' =====
+    if ($moto['status'] === 'disponivel') {
+      ensure_crm_schema($pdo);
+      try {
+        $leads_matches = crm_match_leads_para_moto($pdo, (int)$id, 65, 100, $user);
+        if (!empty($leads_matches)) {
+          $moto_titulo = htmlspecialchars($moto['titulo']);
+          $match_count = 0;
+          foreach ($leads_matches as $match) {
+            $lead_id = (int)$match['lead_id'];
+            $score = (int)$match['score'];
+            $msg = "⚡ Nova moto no estoque combina com este lead: {$moto_titulo} — score {$score}";
+            crm_registrar_interacao($pdo, $lead_id, 'sistema', $msg);
+            $match_count++;
+          }
+          if ($match_count > 0) {
+            $opp_link = base_url('painel/crm_oportunidades.php?moto_id=' . $id . '&view=moto');
+            $ok = "✓ Salvo com sucesso! ⚡ <strong>{$match_count} leads</strong> combinam com esta moto. <a href=\"{$opp_link}\" style=\"color:inherit;text-decoration:underline;\">Ver na Central de Oportunidades →</a>";
+          }
+        }
+      } catch (Throwable $e) {
+        // Gancho nunca quebra o salvamento da moto
+      }
+    }
+
   } catch (Exception $e) {
     $erro = $e->getMessage();
   }

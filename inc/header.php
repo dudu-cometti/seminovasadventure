@@ -61,9 +61,11 @@ $avatarLetter = mb_strtoupper(mb_substr(trim($user['nome'] ?? 'U'), 0, 1, 'UTF-8
 // Badge CRM - leads novos + agendamentos atrasados
 $crmBadge = 0;
 $crmBadgeTitle = '';
+$oppBadge = 0; // oportunidades visíveis
 if ($isLogged && function_exists('crm_badge_novos')) {
   try {
     require_once __DIR__ . '/crm.php';
+    require_once __DIR__ . '/crm_match.php';
     ensure_crm_schema($pdo);
     $crmBadge = crm_badge_novos($pdo, $user);
 
@@ -77,6 +79,23 @@ if ($isLogged && function_exists('crm_badge_novos')) {
 
     $crmBadge += $atrasados;
     $crmBadgeTitle = "$crmBadge alertas: leads novos + agendamentos atrasados";
+
+    // Conta oportunidades (pares moto-lead com score >= 65 não dispensados)
+    $stmt_motos = $pdo->prepare("SELECT id FROM motos WHERE status='disponivel'");
+    $stmt_motos->execute();
+    $opp_count = 0;
+    foreach ($stmt_motos as $m_row) {
+      $leads = crm_match_leads_para_moto($pdo, (int)$m_row['id'], 65, 100, $user);
+      if (empty($leads)) continue;
+      $lead_ids = array_map(fn($l) => $l['lead_id'], $leads);
+      $moto_id_safe = (int)$m_row['id'];
+      $place = implode(',', array_fill(0, count($lead_ids), '?'));
+      $stmt_disp = $pdo->prepare("SELECT COUNT(*) FROM crm_match_dispensados WHERE moto_id=? AND lead_id IN ($place)");
+      $stmt_disp->execute(array_merge([$moto_id_safe], $lead_ids));
+      $dispensados = (int)$stmt_disp->fetchColumn();
+      $opp_count += count($leads) - $dispensados;
+    }
+    $oppBadge = $opp_count;
   } catch (Throwable $e) {}
 }
 ?>
@@ -131,6 +150,14 @@ if ($isLogged && function_exists('crm_badge_novos')) {
           <?php if ($crmBadge > 0): ?>
             <span style="position: absolute; top: -2px; right: -8px; background: var(--red); color: white; font-size: 10px; font-weight: 700; padding: 2px 5px; border-radius: 10px; min-width: 16px; text-align: center;" title="<?= htmlspecialchars($crmBadgeTitle) ?>">
               <?= $crmBadge ?>
+            </span>
+          <?php endif; ?>
+        </a>
+        <a href="<?= base_url('painel/crm_oportunidades.php') ?>" class="<?= $current === 'crm_oportunidades.php' ? 'active' : '' ?>" style="position: relative;">
+          ⚡ Oportunidades
+          <?php if ($oppBadge > 0): ?>
+            <span style="position: absolute; top: -2px; right: -8px; background: var(--green-600,#16a34a); color: white; font-size: 10px; font-weight: 700; padding: 2px 5px; border-radius: 10px; min-width: 16px; text-align: center;">
+              <?= $oppBadge ?>
             </span>
           <?php endif; ?>
         </a>

@@ -87,6 +87,19 @@ if (!function_exists('ensure_crm_schema')) {
         CONSTRAINT fk_crm_agd_lead FOREIGN KEY (lead_id) REFERENCES crm_leads(id) ON DELETE CASCADE
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
+      $pdo->exec("CREATE TABLE IF NOT EXISTS crm_match_dispensados (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        lead_id INT NOT NULL,
+        moto_id INT NOT NULL,
+        user_id INT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uk_lead_moto (lead_id, moto_id),
+        INDEX idx_lead (lead_id),
+        INDEX idx_moto (moto_id),
+        CONSTRAINT fk_dispensados_lead FOREIGN KEY (lead_id) REFERENCES crm_leads(id) ON DELETE CASCADE,
+        CONSTRAINT fk_dispensados_moto FOREIGN KEY (moto_id) REFERENCES motos(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
       // Garante settings iniciais
       $motivos_default = json_encode(['Preço', 'Comprou em outra loja', 'Sem crédito/financiamento', 'Desistiu', 'Sem retorno', 'Trocou de ideia', 'Outro']);
       $s = $pdo->prepare("SELECT COUNT(*) FROM settings WHERE key_name='crm_motivos_perda'");

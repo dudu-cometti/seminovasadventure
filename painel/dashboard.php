@@ -84,6 +84,7 @@ $crm_negociacao = 0;
 $crm_fechados_mes = 0;
 $agendamentos_hoje = 0;
 $agendamentos_atrasados = 0;
+$opp_total = 0;
 try {
   ensure_crm_schema($pdo);
   $crm_novos = (int)$pdo->query("SELECT COUNT(*) FROM crm_leads WHERE etapa='novo'")->fetchColumn();
@@ -95,6 +96,22 @@ try {
   // Agendamentos
   $agendamentos_hoje = (int)$pdo->query("SELECT COUNT(*) FROM crm_agendamentos WHERE DATE(data_hora)=CURDATE() AND status='pendente'")->fetchColumn();
   $agendamentos_atrasados = (int)$pdo->query("SELECT COUNT(*) FROM crm_agendamentos WHERE data_hora<NOW() AND status='pendente'")->fetchColumn();
+
+  // Oportunidades (mesmo cálculo que no header, mas simplificado para o dashboard)
+  require_once __DIR__ . '/../inc/crm_match.php';
+  $stmt_motos = $pdo->prepare("SELECT id FROM motos WHERE status='disponivel'");
+  $stmt_motos->execute();
+  foreach ($stmt_motos as $m_row) {
+    $leads = crm_match_leads_para_moto($pdo, (int)$m_row['id'], 65, 100, $user);
+    if (empty($leads)) continue;
+    $lead_ids = array_map(fn($l) => $l['lead_id'], $leads);
+    $moto_id_safe = (int)$m_row['id'];
+    $place = implode(',', array_fill(0, count($lead_ids), '?'));
+    $stmt_disp = $pdo->prepare("SELECT COUNT(*) FROM crm_match_dispensados WHERE moto_id=? AND lead_id IN ($place)");
+    $stmt_disp->execute(array_merge([$moto_id_safe], $lead_ids));
+    $dispensados = (int)$stmt_disp->fetchColumn();
+    $opp_total += count($leads) - $dispensados;
+  }
 } catch (Throwable $e) {}
 
 // Monta série completa com zero nos dias sem venda
@@ -231,6 +248,9 @@ include __DIR__ . '/../inc/header.php';
       </div>
       <div style="border-top:1px solid var(--border);padding-top:var(--space-3);margin-top:var(--space-3);font-size:13px;color:var(--text-muted);">
         <a href="<?= base_url('painel/crm_agenda.php') ?>" style="color:inherit;text-decoration:none;">📅 Agendamentos hoje: <strong><?= $agendamentos_hoje ?></strong> <?php if ($agendamentos_atrasados > 0): ?><span style="color:var(--red);">(<?= $agendamentos_atrasados ?> atrasados)</span><?php endif; ?></a>
+        <div style="margin-top:8px;">
+          <a href="<?= base_url('painel/crm_oportunidades.php') ?>" style="color:inherit;text-decoration:none;">⚡ Oportunidades de venda: <strong><?= $opp_total ?></strong> pares lead-moto</a>
+        </div>
       </div>
     </div>
 
