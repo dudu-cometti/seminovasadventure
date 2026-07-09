@@ -125,7 +125,17 @@ include __DIR__ . '/../inc/header.php';
           <div style="background: white; border: 1px solid var(--line); border-radius: 8px; padding: var(--space-4); margin-bottom: var(--space-4);">
             <h3 style="margin: 0 0 var(--space-3) 0; font-size: 14px; font-weight: 700;">Moto de interesse</h3>
             <div style="display: flex; gap: var(--space-4); margin-bottom: var(--space-4);">
-              <img src="<?= base_url($lead['moto_foto'] ?? 'assets/placeholder.jpg') ?>" style="width: 120px; height: 90px; border-radius: 6px; object-fit: cover;">
+              <?php if ($lead['moto_foto']): ?>
+                <img src="<?= base_url($lead['moto_foto']) ?>" style="width: 120px; height: 90px; border-radius: 6px; object-fit: cover;" alt="Moto">
+              <?php else: ?>
+                <svg width="120" height="90" style="border-radius: 6px; background: var(--surface-2);" viewBox="0 0 120 90">
+                  <rect width="120" height="90" fill="var(--surface-2)"/>
+                  <g fill="var(--muted)">
+                    <circle cx="40" cy="35" r="12"/>
+                    <path d="M 15 70 L 45 40 L 75 60 L 105 30 L 105 85 L 15 85 Z" fill="var(--line)"/>
+                  </g>
+                </svg>
+              <?php endif; ?>
               <div>
                 <div style="font-size: 16px; font-weight: 600; margin-bottom: 4px;">
                   <a href="<?= base_url('moto.php?id=' . (int)$lead['moto_id']) ?>" target="_blank" style="color: var(--ink); text-decoration: none;">
