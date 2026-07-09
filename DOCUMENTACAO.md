@@ -206,7 +206,65 @@ Passo a passo para uma nova loja (ex.: "Loja XYZ"):
 
 ---
 
-## 9. Contatos / referências
+## 9. CRM — Pipeline de Vendas
+
+Sistema de gestão de leads integrado ao marketplace. Permite rastreamento de prospects
+desde o primeiro contato até o fechamento da venda.
+
+### Tabelas
+- **crm_leads** — leads/prospects (nome, telefone, email, etapa, temperatura, etc.)
+- **crm_interacoes** — timeline de contatos (nota, ligação, WhatsApp, visita, proposta, email)
+- **crm_interesses** — preferências genéricas do lead (marca, modelo, ano, valor, km)
+- **crm_agendamentos** — agendamentos (ligação, visita, test-ride, entrega)
+
+Auto-criadas via `ensure_crm_schema()` no primeiro acesso (sem SQL manual).
+
+### Fluxo de etapas
+1. **Novo** — lead recém-criado (manual ou importado)
+2. **Em contato** — primeira abordagem feita
+3. **Negociação** — cliente interessado, detalhes sendo discutidos
+4. **Proposta** — proposta enviada/apresentada
+5. **Fechado** — venda registrada
+6. **Perdido** — lead descartado (obrigatório informar motivo)
+
+### Temperatura
+- 🔥 **Quente** — lead com alta probabilidade de compra
+- 🌡️ **Morno** — interesse moderado
+- ❄️ **Frio** — baixa probabilidade (acompanhar)
+
+### Páginas
+- **`/painel/crm.php`** — Pipeline Kanban com drag & drop, filtros, importação de compradores
+- **`/painel/crm_lead.php?id=N`** — Ficha completa do lead com timeline, stepper de etapas,
+  agendamentos, interesse genérico, vendedor responsável, valor negociado
+- **`/painel/crm_actions.php`** — Endpoint AJAX para todas as operações
+
+### Permissões
+- **Gerente** — acesso a todos os leads, importa clientes, configura integrações
+- **Vendedor** — vê apenas seus leads + leads sem atribuição; pode se auto-atribuir
+
+### Integração com vendas
+Ao registrar uma venda em `painel/moto_mark_sold.php`, o sistema automaticamente:
+- Busca lead ativo com o telefone do cliente OU com a moto vendida
+- Move lead para etapa "Fechado"
+- Vincula venda via `venda_id`
+- Registra interação `sistema` documentando o fechamento
+
+Falhas do CRM nunca afetam o fluxo de venda (try/catch).
+
+### Integração com marketplace
+Clique em "Chamar no WhatsApp" (cards da vitrine ou detalhe) registra interação
+`whatsapp` no CRM (rastreamento automático em fases futuras).
+
+### Configurações
+Em `painel/config.php` (gerente):
+- **Meta Pixel ID** — para rastreamento de conversões (Fase 2)
+- **Conversions API Token** — Meta CAPI (Fase 2)
+- **Chave Anthropic** — para IA de oportunidades (Fase futura)
+- **Motivos de perda** — lista editável (um por linha)
+
+---
+
+## 10. Contatos / referências
 
 - Repositório: https://github.com/dudu-cometti/seminovasadventure
 - Site (Adventure): https://seminovas.comettiads.com
