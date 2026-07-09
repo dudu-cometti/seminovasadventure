@@ -2,6 +2,8 @@
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../inc/auth.php';
 require_once __DIR__ . '/../inc/moto_fields.php';
+require_once __DIR__ . '/../inc/crm.php';
+require_once __DIR__ . '/../inc/crm_match.php';
 require_login();
 
 if (!user_can('edit')) {
@@ -42,6 +44,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $pdo->prepare("DELETE FROM vendas WHERE moto_id=?")->execute([$id]);
       $pdo->prepare("UPDATE motos SET status='disponivel', sold_at=NULL, updated_at=NOW() WHERE id=?")->execute([$id]);
       $pdo->commit();
+
+      // ===== GANCHO: Moto VOLTA para disponivel =====
+      try {
+        ensure_crm_schema($pdo);
+        $user = current_user();
+        $moto_title = htmlspecialchars($moto['titulo'] ?: $moto['modelo']);
+        $leads_matches = crm_match_leads_para_moto($pdo, $id, 65, 100, $user);
+        if (!empty($leads_matches)) {
+          foreach ($leads_matches as $match) {
+            $lead_id = (int)$match['lead_id'];
+            $score = (int)$match['score'];
+            $msg = "⚡ Moto reativada no estoque combina com este lead: {$moto_title} — score {$score}";
+            crm_registrar_interacao($pdo, $lead_id, 'sistema', $msg);
+          }
+        }
+      } catch (Throwable $e) {
+        // Gancho nunca quebra o cancelamento da venda
+      }
+
       header('Location: ' . base_url('painel/motos.php'));
       exit;
     } catch (Exception $e) {
