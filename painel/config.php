@@ -148,6 +148,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if (isset($_POST['crm_anthropic_key'])) {
       $crm_anthropic_key = trim($_POST['crm_anthropic_key']);
+      // Remove quebras de linha, tabs e espaços extras
+      $crm_anthropic_key = preg_replace('/\s+/', '', $crm_anthropic_key);
       setting_set($pdo, 'crm_anthropic_key', $crm_anthropic_key);
     }
     if (isset($_POST['crm_motivos_perda'])) {

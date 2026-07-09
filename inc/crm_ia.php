@@ -11,7 +11,9 @@ if (!function_exists('crm_ia_enabled')) {
       $stmt = $pdo->prepare("SELECT value FROM settings WHERE key_name='crm_anthropic_key' LIMIT 1");
       $stmt->execute();
       $chave = trim((string)$stmt->fetchColumn());
-      return !empty($chave);
+      // Remove quebras de linha, tabs e espaços extras
+      $chave = preg_replace('/\s+/', '', $chave);
+      return !empty($chave) && strlen($chave) > 10;
     } catch (Throwable $e) {
       return false;
     }
@@ -147,7 +149,10 @@ if (!function_exists('crm_ia_get_chave')) {
     try {
       $stmt = $pdo->prepare("SELECT value FROM settings WHERE key_name='crm_anthropic_key' LIMIT 1");
       $stmt->execute();
-      return trim((string)$stmt->fetchColumn());
+      $chave = trim((string)$stmt->fetchColumn());
+      // Remove quebras de linha, tabs e espaços extras
+      $chave = preg_replace('/\s+/', '', $chave);
+      return $chave;
     } catch (Throwable $e) {
       return '';
     }
