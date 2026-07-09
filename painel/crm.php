@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../inc/auth.php';
 require_once __DIR__ . '/../inc/crm.php';
+require_once __DIR__ . '/../inc/crm_match.php';
 require_login();
 
 ensure_crm_schema($pdo);
@@ -66,6 +67,19 @@ if (!empty($lead_ids)) {
       'hoje' => (int)$row['hoje'],
       'atrasado' => (int)$row['atrasado']
     ];
+  }
+}
+
+// Match forte (⚡): leads em etapa ativa com oportunidades score ≥80
+$match_forte = []; // lead_id => true
+if (!empty($lead_ids)) {
+  foreach ($todos_leads as $lead) {
+    // Só checar leads em etapas ativas
+    if (in_array($lead['etapa'], ['novo', 'contato', 'negociacao', 'proposta'])) {
+      if (crm_lead_tem_match_forte($pdo, (int)$lead['id'])) {
+        $match_forte[(int)$lead['id']] = true;
+      }
+    }
   }
 }
 
@@ -347,6 +361,11 @@ function importarVendas() {
                       ?>
                       <div style="width: 20px; height: 20px; font-size: 12px; display: flex; align-items: center; justify-content: center; color: <?= $icon_color ?>;" title="<?= $title ?>">
                         🕐
+                      </div>
+                    <?php endif; ?>
+                    <?php if (!empty($match_forte[$lead['id']])): ?>
+                      <div style="width: 20px; height: 20px; font-size: 12px; display: flex; align-items: center; justify-content: center; color: var(--brand);" title="Oportunidades no estoque">
+                        ⚡
                       </div>
                     <?php endif; ?>
                   </div>

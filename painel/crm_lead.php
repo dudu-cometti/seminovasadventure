@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../inc/auth.php';
 require_once __DIR__ . '/../inc/crm.php';
+require_once __DIR__ . '/../inc/crm_match.php';
 require_login();
 
 // Helper function for settings
@@ -41,7 +42,13 @@ $agendamentos = $pdo->prepare("SELECT * FROM crm_agendamentos WHERE lead_id=? OR
 $agendamentos->execute([$lead_id]);
 $agendamentos = $agendamentos->fetchAll(PDO::FETCH_ASSOC);
 
+// Oportunidades: motos do estoque que combinam com interesses do lead
+$oportunidades = crm_match_motos_para_lead($pdo, $lead_id, 50, 6);
+
 $vendedores = $pdo->query("SELECT id, nome FROM users WHERE role='vendedor' ORDER BY nome ASC")->fetchAll(PDO::FETCH_ASSOC);
+
+$nomeLoja = setting_get_any($pdo, ['marketplace_nome', 'loja_nome', 'nome_loja', 'site_nome'], 'Adventure Motos');
+$whatsapp = preg_replace('/\D+/', '', setting_get_any($pdo, ['whatsapp_number', 'whatsapp', 'numero_whatsapp', 'telefone_whatsapp'], '5527999215754'));
 
 $motivos_perda_json = setting_get_any($pdo, 'crm_motivos_perda', '["Preço","Outro"]');
 $motivos_perda = json_decode($motivos_perda_json, true) ?: [];
@@ -167,6 +174,84 @@ include __DIR__ . '/../inc/header.php';
             <?php endif; ?>
           </div>
         <?php endif; ?>
+
+        <!-- ⚡ Oportunidades no Estoque -->
+        <div style="background: white; border: 1px solid var(--line); border-radius: 8px; padding: var(--space-4); margin-bottom: var(--space-4);">
+          <h3 style="margin: 0 0 var(--space-3) 0; font-size: 14px; font-weight: 700;">⚡ Oportunidades no estoque</h3>
+
+          <?php if (empty($interesses)): ?>
+            <div style="background: #f0f4f8; border: 1px solid #cbd5e0; border-radius: 6px; padding: var(--space-3); font-size: 13px; color: var(--text-muted); text-align: center;">
+              <div style="margin-bottom: 8px;">Cadastre o interesse do cliente para o radar de oportunidades funcionar.</div>
+              <a href="#" onclick="document.querySelector('[style*=\"Perfil de interesse\"]')?.scrollIntoView()" style="color: var(--brand); text-decoration: none; font-weight: 600;">→ Adicionar interesse</a>
+            </div>
+          <?php elseif (empty($oportunidades)): ?>
+            <div style="color: var(--text-muted); font-size: 13px; padding: var(--space-3); text-align: center;">
+              Nenhuma moto do estoque combina com o interesse cadastrado.
+            </div>
+          <?php else: ?>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: var(--space-3);">
+              <?php foreach ($oportunidades as $op): ?>
+                <div style="border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--bg); cursor: pointer; transition: all var(--t-fast);" onmouseover="this.style.borderColor='var(--brand)'; this.style.boxShadow='0 4px 12px rgba(200,41,31,.1)'" onmouseout="this.style.borderColor='var(--line)'; this.style.boxShadow='none'">
+                  <?php if ($op['foto_capa']): ?>
+                    <div style="width: 100%; height: 120px; background: #f0f0f0; overflow: hidden; border-bottom: 1px solid var(--line);">
+                      <img src="<?= base_url($op['foto_capa']) ?>" alt="" style="width: 100%; height: 100%; object-fit: cover;">
+                    </div>
+                  <?php else: ?>
+                    <div style="width: 100%; height: 120px; background: var(--bg-secondary); border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-size: 40px; color: var(--text-muted);">🏍</div>
+                  <?php endif; ?>
+
+                  <div style="padding: var(--space-2);">
+                    <div style="font-weight: 600; font-size: 12px; margin-bottom: 4px; line-height: 1.2; min-height: 24px;">
+                      <?= htmlspecialchars(mb_substr($op['titulo'], 0, 40)) ?>
+                    </div>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">
+                      <?= $op['ano_modelo'] ?> · <?= number_format($op['km'], 0, ',', '.') ?> km
+                    </div>
+                    <div style="font-weight: 700; color: var(--brand); margin-bottom: 6px; font-size: 13px;">
+                      R$ <?= number_format($op['valor'], 0, ',', '.') ?>
+                    </div>
+
+                    <!-- Badge Score -->
+                    <div style="display: inline-block; padding: 4px 8px; border-radius: 3px; font-size: 10px; font-weight: 700; margin-bottom: 6px;
+                      background: <?php
+                        if ($op['score'] >= 80) echo '#d1fae5';
+                        elseif ($op['score'] >= 65) echo '#fef3c7';
+                        else echo '#e5e7eb';
+                      ?>;
+                      color: <?php
+                        if ($op['score'] >= 80) echo '#047857';
+                        elseif ($op['score'] >= 65) echo '#92400e';
+                        else echo '#6b7280';
+                      ?>;
+                    ">
+                      <?php
+                        if ($op['score'] >= 80) echo '🟢 Match forte';
+                        elseif ($op['score'] >= 65) echo '🟡 Bom match';
+                        else echo '⚪ Possível';
+                      ?>
+                    </div>
+
+                    <?php if ($op['motivo']): ?>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px; line-height: 1.3;">
+                      <?= htmlspecialchars($op['motivo']) ?>
+                    </div>
+                    <?php endif; ?>
+
+                    <!-- Ações -->
+                    <div style="display: flex; gap: 4px; flex-direction: column;">
+                      <button class="btn btn-ghost" style="padding: 4px 6px; font-size: 11px; justify-content: center;" onclick="definirInteresseMoto(<?= (int)$op['moto_id'] ?>, '<?= htmlspecialchars(str_replace("'", "\\'", $op['titulo'])) ?>')">
+                        Definir como interesse
+                      </button>
+                      <button class="btn btn-ghost" style="padding: 4px 6px; font-size: 11px; justify-content: center;" onclick="enviarNoZapOportunidade(<?= (int)$op['moto_id'] ?>, '<?= htmlspecialchars(str_replace("'", "\\'", $op['titulo'])) ?>', <?= $op['ano_modelo'] ?>, <?= $op['km'] ?>, '<?= number_format($op['valor'], 2, '.', '') ?>')">
+                        Enviar no zap
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              <?php endforeach; ?>
+            </div>
+          <?php endif; ?>
+        </div>
 
         <!-- Interesses Genéricos -->
         <div style="background: white; border: 1px solid var(--line); border-radius: 8px; padding: var(--space-4); margin-bottom: var(--space-4);">
@@ -717,6 +802,58 @@ document.addEventListener('keydown', e => {
     fecharModalEditarLead();
   }
 });
+
+// Oportunidades: definir moto como interesse do lead
+function definirInteresseMoto(motoId, motoTitulo) {
+  const leadId = <?= (int)$lead_id ?>;
+  fetch('<?= base_url('painel/crm_actions.php') ?>', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || '' },
+    body: JSON.stringify({
+      acao: 'definir_moto_interesse',
+      lead_id: leadId,
+      moto_id: motoId
+    })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) {
+      alert('✓ Moto definida como interesse');
+      location.reload();
+    } else {
+      alert('✗ Erro: ' + (data.msg || ''));
+    }
+  })
+  .catch(e => alert('✗ Erro: ' + e.message));
+}
+
+// Oportunidades: enviar moto no WhatsApp
+function enviarNoZapOportunidade(motoId, motoTitulo, ano, km, valor) {
+  const leadId = <?= (int)$lead_id ?>;
+  const telefone = '<?= htmlspecialchars($whatsapp) ?>';
+  const nomeLoja = '<?= htmlspecialchars($nomeLoja) ?>';
+
+  const texto = `Oi ${document.querySelector('[onclick*="atualizarField"]')?.textContent || 'cliente'}! Chegou algo com a sua cara aqui na ${nomeLoja}: ${motoTitulo}, ${ano}, ${km} km, por R$ ${valor}. Quer que eu te mande as fotos?`;
+  const linkZap = `https://wa.me/${telefone}?text=${encodeURIComponent(texto)}`;
+
+  fetch('<?= base_url('painel/crm_actions.php') ?>', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || '' },
+    body: JSON.stringify({
+      acao: 'registrar_oportunidade_zap',
+      lead_id: leadId,
+      moto_id: motoId,
+      texto: texto
+    })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) {
+      window.open(linkZap, '_blank');
+    }
+  })
+  .catch(e => console.error(e));
+}
 </script>
 
 <?php include __DIR__ . '/../inc/footer.php'; ?>

@@ -441,6 +441,57 @@ try {
 
       $resp = ['ok' => true, 'msg' => 'Agendamento reagendado'];
       break;
+
+    case 'definir_moto_interesse':
+      if (!user_can('edit')) throw new Exception('Sem permissão');
+      $lead_id = (int)($input['lead_id'] ?? 0);
+      $moto_id = (int)($input['moto_id'] ?? 0);
+
+      if ($lead_id <= 0) throw new Exception('Lead inválido');
+      if ($moto_id <= 0) throw new Exception('Moto inválida');
+
+      $lead = crm_lead_get($pdo, $lead_id);
+      if (!$lead) throw new Exception('Lead não encontrado');
+
+      $user = current_user();
+      if (!crm_pode_ver_lead($user, $lead)) throw new Exception('Sem acesso a este lead');
+
+      // Busca título da moto
+      $moto_stmt = $pdo->prepare("SELECT titulo FROM motos WHERE id=? LIMIT 1");
+      $moto_stmt->execute([$moto_id]);
+      $moto_titulo = $moto_stmt->fetchColumn() ?: 'Moto ' . $moto_id;
+
+      // Atualiza moto_id do lead
+      $pdo->prepare("UPDATE crm_leads SET moto_id=? WHERE id=?")->execute([$moto_id, $lead_id]);
+
+      // Registra interação
+      crm_registrar_interacao($pdo, $lead_id, 'sistema', 'Moto de interesse definida via oportunidades: ' . htmlspecialchars($moto_titulo));
+
+      $resp = ['ok' => true, 'msg' => 'Moto definida'];
+      break;
+
+    case 'registrar_oportunidade_zap':
+      if (!user_can('edit')) throw new Exception('Sem permissão');
+      $lead_id = (int)($input['lead_id'] ?? 0);
+      $moto_id = (int)($input['moto_id'] ?? 0);
+      $texto = trim($input['texto'] ?? '');
+
+      if ($lead_id <= 0) throw new Exception('Lead inválido');
+      if ($moto_id <= 0) throw new Exception('Moto inválida');
+
+      $lead = crm_lead_get($pdo, $lead_id);
+      if (!$lead) throw new Exception('Lead não encontrado');
+
+      $user = current_user();
+      if (!crm_pode_ver_lead($user, $lead)) throw new Exception('Sem acesso a este lead');
+
+      // Registra interação com o texto enviado
+      if (!empty($texto)) {
+        crm_registrar_interacao($pdo, $lead_id, 'whatsapp', $texto);
+      }
+
+      $resp = ['ok' => true, 'msg' => 'Registrado'];
+      break;
   }
 } catch (Exception $e) {
   $resp = ['ok' => false, 'msg' => $e->getMessage()];
