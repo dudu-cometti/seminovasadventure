@@ -45,17 +45,20 @@ try {
     exit;
   }
 
-  // Rate limit: max 5 por IP por hora
+  // Rate limit: max 5 por IP por hora (coluna e event_type, nao event)
   $ip = $_SERVER['REMOTE_ADDR'] ?? '';
-  $hour_ago = time() - 3600;
-  $stmt = $pdo->prepare("SELECT COUNT(*) FROM page_events WHERE ip=? AND event='lead_capture' AND created_at > FROM_UNIXTIME(?)");
-  $stmt->execute([$ip, $hour_ago]);
-  $count = (int)$stmt->fetchColumn();
-  if ($count >= 5) {
-    // Fingi sucesso (anti-bot)
-    $resp = ['ok' => true];
-    echo json_encode($resp);
-    exit;
+  try {
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM page_events WHERE ip=? AND event_type='lead_capture' AND created_at > (NOW() - INTERVAL 1 HOUR)");
+    $stmt->execute([$ip]);
+    $count = (int)$stmt->fetchColumn();
+    if ($count >= 5) {
+      // Fingi sucesso (anti-bot)
+      echo json_encode(['ok' => true]);
+      exit;
+    }
+  } catch (Throwable $e) {
+    error_log('lead_capture rate-limit: ' . $e->getMessage());
+    // Nao bloqueia a criacao do lead se o rate-limit falhar
   }
 
   // Dedup: telefone normalizado com lead ATIVO
@@ -134,11 +137,15 @@ try {
     crm_registrar_interacao($pdo, $lead_id, 'sistema', $msg);
   }
 
-  // Log de evento
+  // Log de evento (para rate-limit) — colunas reais: session_key, event_type, page, ...
   try {
-    $pdo->prepare("INSERT INTO page_events (ip, event, created_at) VALUES (?, ?, NOW())")
-      ->execute([$ip, 'lead_capture']);
-  } catch (Throwable $e) {}
+    $sk = 'leadcap_' . bin2hex(random_bytes(6));
+    $pg = $_SERVER['HTTP_REFERER'] ?? '/';
+    $pdo->prepare("INSERT INTO page_events (session_key, event_type, page, created_at, ip) VALUES (?, 'lead_capture', ?, NOW(), ?)")
+      ->execute([$sk, $pg, $ip]);
+  } catch (Throwable $e) {
+    error_log('lead_capture log-event: ' . $e->getMessage());
+  }
 
   // CAPI Lead event
   $event_id = pixel_event_id();
