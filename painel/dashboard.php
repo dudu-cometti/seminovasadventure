@@ -82,6 +82,8 @@ $serieRaw = $stmtSerie->fetchAll();
 $crm_novos = 0;
 $crm_negociacao = 0;
 $crm_fechados_mes = 0;
+$crm_criados_mes = 0;
+$crm_conversao_mes = 0;
 $agendamentos_hoje = 0;
 $agendamentos_atrasados = 0;
 $opp_total = 0;
@@ -89,9 +91,15 @@ try {
   ensure_crm_schema($pdo);
   $crm_novos = (int)$pdo->query("SELECT COUNT(*) FROM crm_leads WHERE etapa='novo'")->fetchColumn();
   $crm_negociacao = (int)$pdo->query("SELECT COUNT(*) FROM crm_leads WHERE etapa IN ('contato','negociacao','proposta')")->fetchColumn();
-  $stmtCRM = $pdo->prepare("SELECT COUNT(*) FROM crm_leads WHERE etapa='fechado' AND created_at BETWEEN ? AND ?");
+  $stmtCRM = $pdo->prepare("SELECT COUNT(*) FROM crm_leads WHERE etapa='fechado' AND fechado_at BETWEEN ? AND ?");
   $stmtCRM->execute([$deDT, $ateDT]);
   $crm_fechados_mes = (int)$stmtCRM->fetchColumn();
+
+  // Leads criados no mês para taxa de conversão
+  $stmtCriados = $pdo->prepare("SELECT COUNT(*) FROM crm_leads WHERE created_at BETWEEN ? AND ?");
+  $stmtCriados->execute([$deDT, $ateDT]);
+  $crm_criados_mes = (int)$stmtCriados->fetchColumn();
+  $crm_conversao_mes = ($crm_criados_mes > 0) ? round(($crm_fechados_mes / $crm_criados_mes) * 100, 1) : 0;
 
   // Agendamentos
   $agendamentos_hoje = (int)$pdo->query("SELECT COUNT(*) FROM crm_agendamentos WHERE DATE(data_hora)=CURDATE() AND status='pendente'")->fetchColumn();
@@ -250,6 +258,9 @@ include __DIR__ . '/../inc/header.php';
         <a href="<?= base_url('painel/crm_agenda.php') ?>" style="color:inherit;text-decoration:none;">📅 Agendamentos hoje: <strong><?= $agendamentos_hoje ?></strong> <?php if ($agendamentos_atrasados > 0): ?><span style="color:var(--red);">(<?= $agendamentos_atrasados ?> atrasados)</span><?php endif; ?></a>
         <div style="margin-top:8px;">
           <a href="<?= base_url('painel/crm_oportunidades.php') ?>" style="color:inherit;text-decoration:none;">⚡ Oportunidades de venda: <strong><?= $opp_total ?></strong> pares lead-moto</a>
+        </div>
+        <div style="margin-top:8px;">
+          <a href="<?= base_url('painel/crm_relatorios.php') ?>" style="color:inherit;text-decoration:none;">📊 Taxa de conversão: <strong><?= $crm_conversao_mes ?>%</strong> neste mês</a>
         </div>
       </div>
     </div>

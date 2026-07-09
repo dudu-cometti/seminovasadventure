@@ -161,6 +161,7 @@ if ($isLogged && function_exists('crm_badge_novos')) {
             </span>
           <?php endif; ?>
         </a>
+        <a href="<?= base_url('painel/crm_relatorios.php') ?>" class="<?= $current === 'crm_relatorios.php' ? 'active' : '' ?>">📊 Relatórios</a>
         <a href="<?= base_url('painel/analytics.php') ?>" class="<?= $current === 'analytics.php' ? 'active' : '' ?>">Analytics</a>
 
         <?php if ($isGerente || $canUsers): ?>
