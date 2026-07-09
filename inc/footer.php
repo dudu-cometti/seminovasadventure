@@ -112,18 +112,30 @@ function crmCapAbrirModal(motoId, motoTitulo, waHref) {
 function crmCapEnviar(e) {
   e.preventDefault();
   const form = document.getElementById('crm-cap-form');
-  const waHref = document.getElementById('crm-cap-modal').dataset.waHref;
+  const modal = document.getElementById('crm-cap-modal');
+  const waHref = modal.dataset.waHref || '';
 
   const fd = new FormData(form);
   const payload = Object.fromEntries(fd);
 
+  // Anexar dados de rastreio (UTM) salvos pelo track.js
+  try {
+    const track = JSON.parse(localStorage.getItem('am_track') || 'null');
+    if (track) payload.track = track;
+  } catch (err) {}
+
   // Salvar para próximo clique
-  const stored = JSON.parse(localStorage.getItem(CRM_CAP_KEY) || '{}');
   localStorage.setItem(CRM_CAP_KEY, JSON.stringify({
     nome: payload.nome,
     telefone: payload.telefone,
     expires: Date.now() + (24 * 3600000) // 24h
   }));
+
+  // Redireciona pro WhatsApp (ou fecha o modal se não houver link)
+  const irParaWhats = () => {
+    crmCapFecharModal();
+    if (waHref) window.location.href = waHref;
+  };
 
   // Enviar para API
   const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), CRM_CAP_TIMEOUT));
@@ -137,15 +149,12 @@ function crmCapEnviar(e) {
   ])
   .then(data => {
     // Disparar fbq Lead com event_id se recebido
-    if (data?.event_id && window.fbqLead) {
+    if (data && data.event_id && window.fbqLead) {
       window.fbqLead(data.event_id);
     }
   })
   .catch(() => {}) // Falha silenciosa
-  .finally(() => {
-    crmCapFecharModal();
-    window.location.href = waHref;
-  });
+  .finally(irParaWhats);
 }
 
 function crmCapEnviarBackground(motoId, nome, telefone) {

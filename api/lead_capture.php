@@ -84,14 +84,12 @@ try {
       }
     }
   } else {
-    // Criar novo lead
+    // Criar novo lead — UTM vem do corpo do POST (track.js grava no localStorage
+    // e o footer.js anexa em input.track)
     $track_data = [];
-    try {
-      $track_json = localStorage_get('am_track'); // função helper abaixo
-      if ($track_json) {
-        $track_data = json_decode($track_json, true) ?: [];
-      }
-    } catch (Throwable $e) {}
+    if (!empty($input['track']) && is_array($input['track'])) {
+      $track_data = $input['track'];
+    }
 
     $moto_titulo = '';
     if ($moto_id > 0) {
@@ -103,9 +101,9 @@ try {
     $stmt = $pdo->prepare("
       INSERT INTO crm_leads (
         nome, telefone, email, moto_id, etapa, temperatura, origem,
-        utm_source, utm_medium, utm_campaign, utm_content, fbclid, _fbp, _fbc, landing_url,
-        created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+        utm_source, utm_medium, utm_campaign, utm_content, fbclid, fbp, fbc, landing_url,
+        etapa_desde, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), NOW())
     ");
 
     $stmt->execute([
@@ -121,8 +119,8 @@ try {
       $track_data['utm_campaign'] ?? null,
       $track_data['utm_content'] ?? null,
       $track_data['fbclid'] ?? null,
-      $track_data['_fbp'] ?? null,
-      $track_data['_fbc'] ?? null,
+      $track_data['_fbp'] ?? ($track_data['fbp'] ?? null),
+      $track_data['_fbc'] ?? ($track_data['fbc'] ?? null),
       $track_data['landing_url'] ?? $_SERVER['HTTP_REFERER'] ?? null
     ]);
 

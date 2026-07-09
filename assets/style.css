@@ -1457,7 +1457,7 @@ body.chrome-hidden .mkt-toolbar{
 
 /* ===== CRM Capture Modal (FASE 2) ===== */
 .crm-cap-overlay{
-  display: flex !important; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
   background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center;
 }
 .crm-cap-modal{

@@ -406,11 +406,13 @@ try {
         throw new Exception('Sem acesso a este agendamento');
       }
 
-      $pdo->prepare("UPDATE crm_agendamentos SET status=?, updated_at=NOW() WHERE id=?")->execute([$status, $ag_id]);
+      $pdo->prepare("UPDATE crm_agendamentos SET status=? WHERE id=?")->execute([$status, $ag_id]);
 
       if ($status === 'realizado' && !empty($obs_realizado)) {
-        $tipos_validos = ['ligacao', 'visita', 'test_ride', 'entrega'];
-        $tipo_interacao = in_array($ag['tipo'], $tipos_validos) ? $ag['tipo'] : 'interacao';
+        // Mapeia o tipo do agendamento para um tipo de interacao valido no enum
+        // (nota,ligacao,whatsapp,visita,proposta,email,sistema)
+        $map_tipo = ['ligacao' => 'ligacao', 'visita' => 'visita'];
+        $tipo_interacao = $map_tipo[$ag['tipo']] ?? 'nota';
         crm_registrar_interacao($pdo, $ag['lead_id'], $tipo_interacao, $obs_realizado);
       }
 
@@ -435,7 +437,7 @@ try {
         throw new Exception('Sem acesso a este agendamento');
       }
 
-      $pdo->prepare("UPDATE crm_agendamentos SET data_hora=?, updated_at=NOW() WHERE id=?")->execute([$data_hora, $ag_id]);
+      $pdo->prepare("UPDATE crm_agendamentos SET data_hora=? WHERE id=?")->execute([$data_hora, $ag_id]);
 
       $resp = ['ok' => true, 'msg' => 'Agendamento reagendado'];
       break;
