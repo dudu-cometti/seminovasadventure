@@ -527,8 +527,9 @@ function salvarNovoLead(e) {
   });
 }
 
-// Drag & Drop
-document.querySelectorAll('.crm-card').forEach(card => {
+// Drag & Drop (após DOM estar pronto)
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.crm-card').forEach(card => {
   card.addEventListener('dragstart', e => {
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('lead-id', card.dataset.leadId);
@@ -566,6 +567,7 @@ document.querySelectorAll('.crm-coluna-corpo').forEach(coluna => {
     } else {
       moverLead(leadId, etapa);
     }
+  });
   });
 });
 
