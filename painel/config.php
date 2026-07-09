@@ -386,8 +386,11 @@ include __DIR__ . '/../inc/header.php';
     try {
       const resp = await fetch('<?= base_url('painel/crm_actions.php') ?>', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || '' },
-        body: JSON.stringify({ acao: 'ia_testar_conexao' })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          acao: 'ia_testar_conexao',
+          _csrf: document.querySelector('meta[name="csrf-token"]')?.content || ''
+        })
       });
       const data = await resp.json();
       const msg = data.ok ? '✓ IA conectada!' : ('✗ ' + (data.msg || 'Erro ao conectar'));
