@@ -1,8 +1,22 @@
 <?php
 // Meta Pixel + CAPI (Conversions API) integration
 
+// Lê uma setting direto do banco (setting_get() não é global — só existe no config.php)
+function pixel_setting_get($key) {
+  global $pdo;
+  if (!($pdo instanceof PDO)) return '';
+  try {
+    $stmt = $pdo->prepare("SELECT value FROM settings WHERE `key` = ? LIMIT 1");
+    $stmt->execute([$key]);
+    $v = $stmt->fetchColumn();
+    return ($v !== false && $v !== null) ? (string)$v : '';
+  } catch (Throwable $e) {
+    return '';
+  }
+}
+
 function pixel_enabled() {
-  return !empty(setting_get('crm_pixel_id'));
+  return !empty(pixel_setting_get('crm_pixel_id'));
 }
 
 function pixel_event_id() {
@@ -10,7 +24,7 @@ function pixel_event_id() {
 }
 
 function pixel_head_snippet() {
-  $pixel_id = setting_get('crm_pixel_id');
+  $pixel_id = pixel_setting_get('crm_pixel_id');
   if (empty($pixel_id)) {
     return '';
   }
@@ -37,8 +51,8 @@ HTML;
 
 function capi_send($pdo, $eventName, array $userData, array $customData, $eventId, $sourceUrl) {
   try {
-    $pixel_id = setting_get('crm_pixel_id');
-    $token = setting_get('crm_capi_token');
+    $pixel_id = pixel_setting_get('crm_pixel_id');
+    $token = pixel_setting_get('crm_capi_token');
 
     if (empty($pixel_id) || empty($token)) {
       return false;
@@ -59,7 +73,7 @@ function capi_send($pdo, $eventName, array $userData, array $customData, $eventI
     ];
 
     // Adicionar test_event_code se configurada
-    $test_code = setting_get('crm_capi_test_code');
+    $test_code = pixel_setting_get('crm_capi_test_code');
     if (!empty($test_code)) {
       $payload['test_event_code'] = $test_code;
     }

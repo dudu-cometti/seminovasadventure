@@ -409,13 +409,8 @@ try {
       $pdo->prepare("UPDATE crm_agendamentos SET status=?, updated_at=NOW() WHERE id=?")->execute([$status, $ag_id]);
 
       if ($status === 'realizado' && !empty($obs_realizado)) {
-        $tipo_interacao = match($ag['tipo']) {
-          'ligacao' => 'ligacao',
-          'visita' => 'visita',
-          'test_ride' => 'test_ride',
-          'entrega' => 'entrega',
-          default => 'interacao'
-        };
+        $tipos_validos = ['ligacao', 'visita', 'test_ride', 'entrega'];
+        $tipo_interacao = in_array($ag['tipo'], $tipos_validos) ? $ag['tipo'] : 'interacao';
         crm_registrar_interacao($pdo, $ag['lead_id'], $tipo_interacao, $obs_realizado);
       }
 

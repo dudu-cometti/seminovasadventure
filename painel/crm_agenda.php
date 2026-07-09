@@ -612,13 +612,13 @@ document.getElementById('modalNovoAgendamento')?.addEventListener('click', funct
 
 <?php
 function getAgendamentoIcon($tipo) {
-  return match($tipo) {
-    'ligacao' => '📞',
-    'visita' => '🏬',
+  $icones = [
+    'ligacao'   => '📞',
+    'visita'    => '🏬',
     'test_ride' => '🏍',
-    'entrega' => '🔑',
-    default => '❓'
-  };
+    'entrega'   => '🔑',
+  ];
+  return $icones[$tipo] ?? '❓';
 }
 ?>
 
