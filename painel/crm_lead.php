@@ -4,6 +4,20 @@ require_once __DIR__ . '/../inc/auth.php';
 require_once __DIR__ . '/../inc/crm.php';
 require_login();
 
+// Helper function for settings
+function setting_get_any($pdo, $keys, $default = '') {
+  if (!is_array($keys)) $keys = [$keys];
+  try {
+    $place = implode(',', array_fill(0, count($keys), '?'));
+    $stmt = $pdo->prepare("SELECT `key`, value FROM settings WHERE `key` IN ($place)");
+    $stmt->execute($keys);
+    foreach ($stmt as $row) {
+      if (trim((string)$row['value']) !== '') return $row['value'];
+    }
+  } catch (Throwable $e) {}
+  return $default;
+}
+
 ensure_crm_schema($pdo);
 
 $user = current_user();
