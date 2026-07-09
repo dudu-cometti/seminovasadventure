@@ -169,8 +169,13 @@ function moverLead(leadId, etapa) {
     method: 'POST',
     body: fd
   })
-  .then(r => r.json())
-  .then(d => {
+  .then(r => {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.text();
+  })
+  .then(text => {
+    if (!text) throw new Error('Resposta vazia');
+    const d = JSON.parse(text);
     if (d.ok) {
       window.location.reload();
     } else {
@@ -178,6 +183,7 @@ function moverLead(leadId, etapa) {
     }
   })
   .catch(err => {
+    console.error('Erro ao mover lead:', err);
     alert('Erro ao mover: ' + err.message);
   });
 }
