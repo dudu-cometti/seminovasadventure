@@ -227,6 +227,9 @@ if (!function_exists('crm_ia_montar_prompt')) {
           . "Tom: amigável, SEM insistência. Adeque à razão da perda (ex: se foi preço, "
           . "avise de novas opções; se foi crédito, convide a reavaliar). Respostas diretas.";
 
+      case 'teste_conexao':
+        return "Responda apenas com a palavra OK.";
+
       default:
         return '';
     }

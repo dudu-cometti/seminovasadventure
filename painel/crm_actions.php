@@ -647,6 +647,15 @@ try {
 
       $resp = $resultado;
       break;
+
+    case 'ia_testar_conexao':
+      $resultado = crm_ia_chamar($pdo, 'teste_conexao', ['teste' => 'ok'], false);
+      if ($resultado['ok']) {
+        $resp = ['ok' => true, 'msg' => '✓ Conectado com sucesso!'];
+      } else {
+        $resp = $resultado;
+      }
+      break;
   }
 } catch (Exception $e) {
   $resp = ['ok' => false, 'msg' => $e->getMessage()];

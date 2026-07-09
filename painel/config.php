@@ -304,8 +304,16 @@ include __DIR__ . '/../inc/header.php';
 
             <div class="field mb-4">
               <label>Chave Anthropic <span class="text-muted" style="font-weight:500;">(opcional)</span></label>
-              <input type="password" name="crm_anthropic_key" placeholder="sk-••••••••" value="<?= htmlspecialchars($crm_anthropic_key) ?>" autocomplete="off">
-              <small>Chave de API da Anthropic para IA. Será implementada na Fase 6.</small>
+              <div style="display:flex;gap:8px;align-items:flex-start;">
+                <input type="password" name="crm_anthropic_key" placeholder="sk-••••••••" value="<?= htmlspecialchars($crm_anthropic_key) ?>" autocomplete="off" style="flex:1;">
+                <?php if (!empty($crm_anthropic_key)): ?>
+                <button type="button" class="btn btn-outline btn-sm" onclick="testarConexaoIA()" style="white-space:nowrap;margin-top:0;">↻ Testar</button>
+                <?php endif; ?>
+              </div>
+              <small>Chave de API da Anthropic para IA. <a href="https://console.anthropic.com/" target="_blank" rel="noopener">Gerar chave →</a></small>
+              <?php if (!empty($crm_anthropic_key)): ?>
+              <small style="display:block;margin-top:8px;color:var(--green-600);font-weight:600;">✓ IA Configurada</small>
+              <?php endif; ?>
             </div>
 
             <div class="field mb-4">
@@ -360,6 +368,29 @@ include __DIR__ . '/../inc/header.php';
       });
       const data = await resp.json();
       const msg = data.ok ? '✓ Evento enviado! Verifique o Gerenciador de Eventos.' : ('✗ ' + (data.msg || 'Erro ao enviar'));
+      alert(msg);
+    } catch(e) {
+      alert('✗ Erro: ' + e.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = orig;
+    }
+  };
+
+  window.testarConexaoIA = async function() {
+    const btn = event.target;
+    btn.disabled = true;
+    const orig = btn.textContent;
+    btn.textContent = '↻ Testando...';
+
+    try {
+      const resp = await fetch('<?= base_url('painel/crm_actions.php') ?>', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || '' },
+        body: JSON.stringify({ acao: 'ia_testar_conexao' })
+      });
+      const data = await resp.json();
+      const msg = data.ok ? '✓ IA conectada!' : ('✗ ' + (data.msg || 'Erro ao conectar'));
       alert(msg);
     } catch(e) {
       alert('✗ Erro: ' + e.message);
