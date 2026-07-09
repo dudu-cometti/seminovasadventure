@@ -90,6 +90,72 @@ function importarVendas() {
 function limparFiltros() {
   window.location = '<?= base_url('painel/crm.php') ?>';
 }
+
+// CSRF helper
+function addCsrfToken(fd) {
+  const token = document.querySelector('meta[name="csrf-token"]')?.content || '';
+  if (token) fd.append('_csrf', token);
+  return fd;
+}
+
+// Salvar novo lead
+function salvarNovoLead(e) {
+  e.preventDefault();
+  const form = document.getElementById('form-novo-lead');
+  if (!form) return;
+
+  const fd = new FormData(form);
+  fd.append('acao', 'criar_lead');
+  addCsrfToken(fd);
+
+  fetch('<?= base_url('painel/crm_actions.php') ?>', {
+    method: 'POST',
+    body: fd
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.ok) {
+      fecharModalNovoLead();
+      window.location.reload();
+    } else {
+      alert('Erro: ' + d.msg);
+    }
+  })
+  .catch(err => {
+    alert('Erro ao criar lead: ' + err.message);
+  });
+}
+
+// Checar telefone (dedup)
+function checarTelefone() {
+  const tel = document.getElementById('telefone-modal')?.value;
+  if (!tel) return;
+
+  const fd = new FormData();
+  fd.append('acao', 'checar_telefone');
+  fd.append('telefone', tel);
+  addCsrfToken(fd);
+
+  fetch('<?= base_url('painel/crm_actions.php') ?>', {
+    method: 'POST',
+    body: fd
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.existe) {
+      const aviso = document.getElementById('dedup-aviso');
+      const link = document.getElementById('dedup-link');
+      if (aviso && link) {
+        link.href = '<?= base_url('painel/crm_lead.php?id=') ?>' + d.lead_id;
+        aviso.style.display = 'block';
+      }
+    } else {
+      const aviso = document.getElementById('dedup-aviso');
+      if (aviso) aviso.style.display = 'none';
+    }
+  })
+  .catch(() => {});
+}
 </script>
 
 <main class="container" style="padding: var(--space-4) 0;">
