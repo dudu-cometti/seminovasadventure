@@ -306,8 +306,8 @@ function importarVendas() {
                   style="background: white; border: 1px solid var(--line); border-radius: 6px; padding: var(--space-3); cursor: grab; transition: all 0.2s ease; border-left: 3px solid <?= $etapa_info['cor'] ?>;">
 
                   <div style="display: flex; gap: var(--space-2); margin-bottom: var(--space-2);">
-                    <div style="width: 40px; height: 40px; border-radius: 50%; background: var(--bg); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <div style="width: 40px; height: 40px; border-radius: 50%; background: var(--bg); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--muted);">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                         <circle cx="12" cy="7" r="4"/>
                       </svg>
