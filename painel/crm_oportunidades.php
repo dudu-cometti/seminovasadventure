@@ -15,7 +15,7 @@ $moto_id_filter = (int)($_GET['moto_id'] ?? 0);
 $oportunidades_por_moto = [];
 if ($view === 'moto' || true) { // ambas views precisam dessa info
   $stmt_motos = $pdo->prepare("
-    SELECT m.id, m.titulo, m.valor, m.ano_modelo, m.km, m.created_at,
+    SELECT m.id, m.titulo, m.valor, m.ano_modelo, m.quilometragem as km, m.created_at,
            (SELECT caminho FROM moto_fotos WHERE moto_id=m.id ORDER BY ordem ASC LIMIT 1) as foto_capa
     FROM motos m
     WHERE m.status='disponivel'

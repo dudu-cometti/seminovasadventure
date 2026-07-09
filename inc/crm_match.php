@@ -179,7 +179,7 @@ function crm_match_motos_para_lead($pdo, $leadId, $minScore = 50, $limit = 6) {
 
     // Busca motos disponíveis com foto capa
     $stmt_motos = $pdo->prepare("
-      SELECT m.id, m.titulo, m.modelo, m.ano_modelo, m.km, m.valor,
+      SELECT m.id, m.titulo, m.modelo, m.ano_modelo, m.quilometragem as km, m.valor,
              (SELECT caminho FROM moto_fotos WHERE moto_id=m.id ORDER BY ordem ASC, id ASC LIMIT 1) as foto_capa
       FROM motos m
       WHERE m.status='disponivel'
@@ -274,7 +274,7 @@ function crm_match_motos_para_lead($pdo, $leadId, $minScore = 50, $limit = 6) {
  */
 function crm_match_leads_para_moto($pdo, $motoId, $minScore = 50, $limit = 10, $user = null) {
   try {
-    $moto = $pdo->prepare("SELECT id, titulo, modelo, ano_modelo, km, valor FROM motos WHERE id=?");
+    $moto = $pdo->prepare("SELECT id, titulo, modelo, ano_modelo, quilometragem as km, valor FROM motos WHERE id=?");
     $moto->execute([$motoId]);
     $moto = $moto->fetch(PDO::FETCH_ASSOC);
     if (!$moto) return [];
