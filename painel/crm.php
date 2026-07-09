@@ -156,6 +156,31 @@ function checarTelefone() {
   })
   .catch(() => {});
 }
+
+// Mover lead (drag & drop)
+function moverLead(leadId, etapa) {
+  const fd = new FormData();
+  fd.append('acao', 'mover');
+  fd.append('lead_id', leadId);
+  fd.append('etapa', etapa);
+  addCsrfToken(fd);
+
+  fetch('<?= base_url('painel/crm_actions.php') ?>', {
+    method: 'POST',
+    body: fd
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.ok) {
+      window.location.reload();
+    } else {
+      alert('Erro: ' + d.msg);
+    }
+  })
+  .catch(err => {
+    alert('Erro ao mover: ' + err.message);
+  });
+}
 </script>
 
 <main class="container" style="padding: var(--space-4) 0;">
