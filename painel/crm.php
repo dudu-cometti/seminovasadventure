@@ -62,7 +62,32 @@ include __DIR__ . '/../inc/header.php';
 ?>
 
 <script>
-// Funções essenciais que precisam estar disponíveis para onclick
+const CRM_ACTIONS_URL = '<?= base_url('painel/crm_actions.php') ?>';
+const CRM_LEAD_URL = '<?= base_url('painel/crm_lead.php?id=') ?>';
+
+// CSRF helper
+function addCsrfToken(fd) {
+  const token = document.querySelector('meta[name="csrf-token"]')?.content || '';
+  if (token) fd.append('_csrf', token);
+  return fd;
+}
+
+// POST helper que trata resposta não-JSON com clareza
+function crmPost(fd) {
+  addCsrfToken(fd);
+  return fetch(CRM_ACTIONS_URL, { method: 'POST', body: fd })
+    .then(r => r.text())
+    .then(text => {
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        console.error('Resposta inválida do servidor:', text);
+        throw new Error('Resposta inválida do servidor');
+      }
+    });
+}
+
+// ===== Modais =====
 function abrirModalNovoLead() {
   const modal = document.getElementById('modal-novo-lead');
   if (modal) modal.style.display = 'flex';
@@ -83,109 +108,124 @@ function fecharModalFechado() {
   const modal = document.getElementById('modal-confirma-fechado');
   if (modal) modal.style.display = 'none';
 }
-function importarVendas() {
-  if (!confirm('Importar compradores do histórico de vendas?')) return;
-  alert('Importação em desenvolvimento...');
-}
 function limparFiltros() {
   window.location = '<?= base_url('painel/crm.php') ?>';
 }
 
-// CSRF helper
-function addCsrfToken(fd) {
-  const token = document.querySelector('meta[name="csrf-token"]')?.content || '';
-  if (token) fd.append('_csrf', token);
-  return fd;
-}
-
-// Salvar novo lead
+// ===== Novo lead =====
 function salvarNovoLead(e) {
   e.preventDefault();
   const form = document.getElementById('form-novo-lead');
   if (!form) return;
-
   const fd = new FormData(form);
   fd.append('acao', 'criar_lead');
-  addCsrfToken(fd);
-
-  fetch('<?= base_url('painel/crm_actions.php') ?>', {
-    method: 'POST',
-    body: fd
-  })
-  .then(r => r.json())
-  .then(d => {
-    if (d.ok) {
-      fecharModalNovoLead();
-      window.location.reload();
-    } else {
-      alert('Erro: ' + d.msg);
-    }
-  })
-  .catch(err => {
-    alert('Erro ao criar lead: ' + err.message);
-  });
+  crmPost(fd)
+    .then(d => {
+      if (d.ok) { fecharModalNovoLead(); window.location.reload(); }
+      else alert('Erro: ' + d.msg);
+    })
+    .catch(err => alert('Erro ao criar lead: ' + err.message));
 }
 
-// Checar telefone (dedup)
 function checarTelefone() {
   const tel = document.getElementById('telefone-modal')?.value;
   if (!tel) return;
-
   const fd = new FormData();
   fd.append('acao', 'checar_telefone');
   fd.append('telefone', tel);
-  addCsrfToken(fd);
-
-  fetch('<?= base_url('painel/crm_actions.php') ?>', {
-    method: 'POST',
-    body: fd
-  })
-  .then(r => r.json())
-  .then(d => {
-    if (d.existe) {
+  crmPost(fd)
+    .then(d => {
       const aviso = document.getElementById('dedup-aviso');
       const link = document.getElementById('dedup-link');
-      if (aviso && link) {
-        link.href = '<?= base_url('painel/crm_lead.php?id=') ?>' + d.lead_id;
+      if (d.existe && aviso && link) {
+        link.href = CRM_LEAD_URL + d.lead_id;
         aviso.style.display = 'block';
+      } else if (aviso) {
+        aviso.style.display = 'none';
       }
-    } else {
-      const aviso = document.getElementById('dedup-aviso');
-      if (aviso) aviso.style.display = 'none';
-    }
-  })
-  .catch(() => {});
+    })
+    .catch(() => {});
 }
 
-// Mover lead (drag & drop)
+// ===== Mover lead =====
 function moverLead(leadId, etapa) {
   const fd = new FormData();
   fd.append('acao', 'mover');
   fd.append('lead_id', leadId);
   fd.append('etapa', etapa);
-  addCsrfToken(fd);
+  crmPost(fd)
+    .then(d => {
+      if (d.ok) window.location.reload();
+      else alert('Erro: ' + d.msg);
+    })
+    .catch(err => alert('Erro ao mover: ' + err.message));
+}
 
-  fetch('<?= base_url('painel/crm_actions.php') ?>', {
-    method: 'POST',
-    body: fd
-  })
-  .then(r => {
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    return r.text();
-  })
-  .then(text => {
-    if (!text) throw new Error('Resposta vazia');
-    const d = JSON.parse(text);
-    if (d.ok) {
-      window.location.reload();
-    } else {
-      alert('Erro: ' + d.msg);
-    }
-  })
-  .catch(err => {
-    console.error('Erro ao mover lead:', err);
-    alert('Erro ao mover: ' + err.message);
-  });
+function confirmarPerda(e) {
+  e.preventDefault();
+  const fd = new FormData(document.getElementById('form-confirma-perda'));
+  fd.append('acao', 'mover');
+  fd.append('lead_id', document.getElementById('lead-id-perda').value);
+  fd.append('etapa', 'perdido');
+  crmPost(fd)
+    .then(d => {
+      if (d.ok) window.location.reload();
+      else alert('Erro: ' + d.msg);
+    })
+    .catch(err => alert('Erro: ' + err.message));
+}
+
+function confirmarFechado(e) {
+  e.preventDefault();
+  const fd = new FormData(document.getElementById('form-confirma-fechado'));
+  fd.append('acao', 'mover');
+  fd.append('lead_id', document.getElementById('lead-id-fechado').value);
+  fd.append('etapa', 'fechado');
+  fd.append('valor_negociado', document.getElementById('valor-fechado').value);
+  crmPost(fd)
+    .then(d => {
+      if (d.ok) window.location.reload();
+      else alert('Erro: ' + d.msg);
+    })
+    .catch(err => alert('Erro: ' + err.message));
+}
+
+// ===== Temperatura =====
+function ciclarTemperatura(leadId) {
+  const card = document.querySelector('[data-lead-id="' + leadId + '"]');
+  if (!card) return;
+  const temps = ['frio', 'morno', 'quente'];
+  const atual = card.dataset.temperatura || 'morno';
+  const prox = temps[(temps.indexOf(atual) + 1) % temps.length];
+  const fd = new FormData();
+  fd.append('acao', 'temperatura');
+  fd.append('lead_id', leadId);
+  fd.append('temperatura', prox);
+  crmPost(fd)
+    .then(d => { if (d.ok) window.location.reload(); })
+    .catch(() => {});
+}
+
+// ===== WhatsApp =====
+function abrirWhatsApp(leadId, tel) {
+  const fd = new FormData();
+  fd.append('acao', 'nova_interacao');
+  fd.append('lead_id', leadId);
+  fd.append('tipo', 'whatsapp');
+  fd.append('texto', 'Clicou para chamar no WhatsApp');
+  crmPost(fd).catch(() => {});
+  const num = tel.replace(/\D/g, '');
+  window.open('https://wa.me/55' + num + '?text=' + encodeURIComponent('Oi! Tenho interesse em saber mais...'), '_blank');
+}
+
+// ===== Importar vendas =====
+function importarVendas() {
+  if (!confirm('Importar compradores do histórico de vendas?')) return;
+  const fd = new FormData();
+  fd.append('acao', 'importar_vendas');
+  crmPost(fd)
+    .then(d => { alert(d.msg); window.location.reload(); })
+    .catch(err => alert('Erro ao importar: ' + err.message));
 }
 </script>
 
@@ -262,14 +302,14 @@ function moverLead(leadId, etapa) {
               </div>
             <?php else: ?>
               <?php foreach ($leads_por_etapa[$etapa_key] as $lead): ?>
-                <div class="crm-card" draggable="true" data-lead-id="<?= (int)$lead['id'] ?>" data-etapa="<?= htmlspecialchars($lead['etapa']) ?>"
+                <div class="crm-card" draggable="true" data-lead-id="<?= (int)$lead['id'] ?>" data-etapa="<?= htmlspecialchars($lead['etapa']) ?>" data-temperatura="<?= htmlspecialchars($lead['temperatura']) ?>"
                   style="background: white; border: 1px solid var(--line); border-radius: 6px; padding: var(--space-3); cursor: grab; transition: all 0.2s ease; border-left: 3px solid <?= $etapa_info['cor'] ?>;">
 
                   <div style="display: flex; gap: var(--space-2); margin-bottom: var(--space-2);">
-                    <?php if ($lead['moto_id']): ?>
-                      <img src="<?= base_url($lead['moto_foto'] ?? 'assets/placeholder.jpg') ?>" style="width: 48px; height: 36px; border-radius: 4px; object-fit: cover;">
+                    <?php if (!empty($lead['moto_foto'])): ?>
+                      <img src="<?= base_url($lead['moto_foto']) ?>" style="width: 48px; height: 36px; border-radius: 4px; object-fit: cover;" alt="">
                     <?php else: ?>
-                      <div style="width: 48px; height: 36px; border-radius: 4px; background: var(--line); display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 12px;">sem foto</div>
+                      <div style="width: 48px; height: 36px; border-radius: 4px; background: var(--line); display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 10px;">sem foto</div>
                     <?php endif; ?>
                     <div style="flex: 1; min-width: 0;">
                       <div style="font-family: Inter, sans-serif; font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 2px;">
@@ -461,88 +501,14 @@ function moverLead(leadId, etapa) {
 </style>
 
 <script>
-// CSRF token helper
-function addCsrfToken(fd) {
-  const token = document.querySelector('meta[name="csrf-token"]')?.content || '';
-  if (token) fd.append('_csrf', token);
-  return fd;
-}
-
-function abrirModalNovoLead() {
-  document.getElementById('modal-novo-lead').style.display = 'flex';
-}
-
-function fecharModalNovoLead() {
-  document.getElementById('modal-novo-lead').style.display = 'none';
-  document.getElementById('form-novo-lead').reset();
-  document.getElementById('dedup-aviso').style.display = 'none';
-}
-
-function fecharModalPerda() {
-  document.getElementById('modal-confirma-perda').style.display = 'none';
-}
-
-function fecharModalFechado() {
-  document.getElementById('modal-confirma-fechado').style.display = 'none';
-}
-
-function checarTelefone() {
-  const tel = document.getElementById('telefone-modal').value;
-  if (!tel) return;
-
-  const fd = new FormData();
-  fd.append('acao', 'checar_telefone');
-  fd.append('telefone', tel);
-  addCsrfToken(fd);
-
-  fetch('<?= base_url('painel/crm_actions.php') ?>', {
-    method: 'POST',
-    body: fd
-  })
-  .then(r => r.json())
-  .then(d => {
-    if (d.existe) {
-      const aviso = document.getElementById('dedup-aviso');
-      const link = document.getElementById('dedup-link');
-      link.href = '<?= base_url('painel/crm_lead.php?id=') ?>' + d.lead_id;
-      aviso.style.display = 'block';
-    } else {
-      document.getElementById('dedup-aviso').style.display = 'none';
-    }
-  });
-}
-
-function salvarNovoLead(e) {
-  e.preventDefault();
-  const fd = new FormData(document.getElementById('form-novo-lead'));
-  fd.append('acao', 'criar_lead');
-  addCsrfToken(fd);
-
-  fetch('<?= base_url('painel/crm_actions.php') ?>', {
-    method: 'POST',
-    body: fd
-  })
-  .then(r => r.json())
-  .then(d => {
-    if (d.ok) {
-      fecharModalNovoLead();
-      window.location.reload();
-    } else {
-      alert('Erro: ' + d.msg);
-    }
-  });
-}
-
-// Drag & Drop (após DOM estar pronto)
-document.addEventListener('DOMContentLoaded', function() {
-  document.querySelectorAll('.crm-card').forEach(card => {
+// ===== Drag & Drop =====
+document.querySelectorAll('.crm-card').forEach(card => {
   card.addEventListener('dragstart', e => {
     e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('lead-id', card.dataset.leadId);
+    e.dataTransfer.setData('text/plain', card.dataset.leadId);
     card.style.opacity = '0.5';
   });
-
-  card.addEventListener('dragend', e => {
+  card.addEventListener('dragend', () => {
     card.style.opacity = '1';
   });
 });
@@ -553,16 +519,19 @@ document.querySelectorAll('.crm-coluna-corpo').forEach(coluna => {
     e.dataTransfer.dropEffect = 'move';
     coluna.style.background = 'rgba(200, 41, 31, 0.05)';
   });
-
-  coluna.addEventListener('dragleave', e => {
+  coluna.addEventListener('dragleave', () => {
     coluna.style.background = '';
   });
-
   coluna.addEventListener('drop', e => {
     e.preventDefault();
     coluna.style.background = '';
-    const leadId = e.dataTransfer.getData('lead-id');
+    const leadId = e.dataTransfer.getData('text/plain');
     const etapa = coluna.dataset.etapa;
+    if (!leadId) return;
+
+    // Se já está na mesma etapa, nada a fazer
+    const card = document.querySelector('[data-lead-id="' + leadId + '"]');
+    if (card && card.dataset.etapa === etapa) return;
 
     if (etapa === 'perdido') {
       document.getElementById('lead-id-perda').value = leadId;
@@ -574,161 +543,23 @@ document.querySelectorAll('.crm-coluna-corpo').forEach(coluna => {
       moverLead(leadId, etapa);
     }
   });
-  });
 });
 
-function moverLead(leadId, etapa) {
-  const fd = new FormData();
-  fd.append('acao', 'mover');
-  fd.append('lead_id', leadId);
-  fd.append('etapa', etapa);
-  addCsrfToken(fd);
+// ===== Motivos de perda (estático) =====
+(function() {
+  const motivos = ['Preço', 'Comprou em outra loja', 'Sem crédito/financiamento', 'Desistiu', 'Sem retorno', 'Trocou de ideia', 'Outro'];
+  const sel = document.getElementById('motivo-perda');
+  if (sel) {
+    motivos.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m;
+      opt.textContent = m;
+      sel.appendChild(opt);
+    });
+  }
+})();
 
-  fetch('<?= base_url('painel/crm_actions.php') ?>', {
-    method: 'POST',
-    body: fd
-  })
-  .then(r => r.json())
-  .then(d => {
-    if (d.ok) {
-      window.location.reload();
-    } else {
-      alert('Erro: ' + d.msg);
-    }
-  });
-}
-
-function confirmarPerda(e) {
-  e.preventDefault();
-  const fd = new FormData(document.getElementById('form-confirma-perda'));
-  fd.append('acao', 'mover');
-  fd.append('lead_id', document.getElementById('lead-id-perda').value);
-  fd.append('etapa', 'perdido');
-  addCsrfToken(fd);
-
-  fetch('<?= base_url('painel/crm_actions.php') ?>', {
-    method: 'POST',
-    body: fd
-  })
-  .then(r => r.json())
-  .then(d => {
-    if (d.ok) {
-      window.location.reload();
-    } else {
-      alert('Erro: ' + d.msg);
-    }
-  });
-}
-
-function confirmarFechado(e) {
-  e.preventDefault();
-  const fd = new FormData(document.getElementById('form-confirma-fechado'));
-  fd.append('acao', 'mover');
-  fd.append('lead_id', document.getElementById('lead-id-fechado').value);
-  fd.append('etapa', 'fechado');
-  fd.append('valor_negociado', document.getElementById('valor-fechado').value);
-  addCsrfToken(fd);
-
-  fetch('<?= base_url('painel/crm_actions.php') ?>', {
-    method: 'POST',
-    body: fd
-  })
-  .then(r => r.json())
-  .then(d => {
-    if (d.ok) {
-      window.location.reload();
-    } else {
-      alert('Erro: ' + d.msg);
-    }
-  });
-}
-
-function ciclarTemperatura(leadId) {
-  const temps = ['frio', 'morno', 'quente'];
-  const card = document.querySelector(`[data-lead-id="${leadId}"]`);
-  const etapa = card.dataset.etapa;
-  const leads = <?= json_encode(array_map(fn($l) => $l['id'] . ':' . $l['temperatura'], $todos_leads)) ?>;
-  const atual = '<?php echo isset($lead['temperatura']) ? $lead['temperatura'] : 'morno'; ?>';
-  const idx = temps.indexOf(atual);
-  const prox = temps[(idx + 1) % temps.length];
-
-  const fd = new FormData();
-  fd.append('acao', 'temperatura');
-  fd.append('lead_id', leadId);
-  fd.append('temperatura', prox);
-  addCsrfToken(fd);
-
-  fetch('<?= base_url('painel/crm_actions.php') ?>', {
-    method: 'POST',
-    body: fd
-  })
-  .then(r => r.json())
-  .then(d => {
-    if (d.ok) {
-      window.location.reload();
-    }
-  });
-}
-
-function abrirWhatsApp(leadId, tel) {
-  const url = 'https://wa.me/55<?php echo setting_get_any($pdo, 'whatsapp_number', ''); ?>?text=Oi! Tenho%20interesse%20em%20saber%20mais...';
-  const fd = new FormData();
-  fd.append('acao', 'nova_interacao');
-  fd.append('lead_id', leadId);
-  fd.append('tipo', 'whatsapp');
-  fd.append('texto', 'Clicou para chamar no WhatsApp');
-  addCsrfToken(fd);
-
-  fetch('<?= base_url('painel/crm_actions.php') ?>', {
-    method: 'POST',
-    body: fd
-  });
-
-  window.open(crm_whatsapp_link('<?= htmlspecialchars($tel) ?>'), '_blank');
-}
-
-function crm_whatsapp_link(tel) {
-  return 'https://wa.me/55' + tel.replace(/\D/g, '') + '?text=Oi!%20Tenho%20interesse%20em%20saber%20mais...';
-}
-
-function importarVendas() {
-  if (!confirm('Importar compradores do histórico de vendas?')) return;
-
-  const fd = new FormData();
-  fd.append('acao', 'importar_vendas');
-  addCsrfToken(fd);
-
-  fetch('<?= base_url('painel/crm_actions.php') ?>', {
-    method: 'POST',
-    body: fd
-  })
-  .then(r => r.json())
-  .then(d => {
-    alert(d.msg);
-    window.location.reload();
-  });
-}
-
-function limparFiltros() {
-  window.location = '<?= base_url('painel/crm.php') ?>';
-}
-
-// Carregar motivos de perda
-fetch('<?= base_url('painel/crm_actions.php') ?>?acao=motivos')
-.then(r => r.json())
-.catch(() => {
-  document.getElementById('motivo-perda').innerHTML += `
-    <option value="Preço">Preço</option>
-    <option value="Comprou em outra loja">Comprou em outra loja</option>
-    <option value="Sem crédito/financiamento">Sem crédito/financiamento</option>
-    <option value="Desistiu">Desistiu</option>
-    <option value="Sem retorno">Sem retorno</option>
-    <option value="Trocou de ideia">Trocou de ideia</option>
-    <option value="Outro">Outro</option>
-  `;
-});
-
-// Fechar modais com ESC
+// ===== Fechar modais com ESC =====
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     fecharModalNovoLead();
