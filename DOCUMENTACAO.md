@@ -171,7 +171,55 @@ Ainda assim, o `criar_banco_novo.sql` já está atualizado com tudo.
 
 ---
 
-## 8. Como DUPLICAR o sistema para outra empresa
+## 8. CRM — Pipeline de Vendas
+
+Sistema de gestão de leads integrado. Rastreia prospects desde primeiro contato até fechamento.
+
+### Tabelas (auto-criadas via `ensure_crm_schema`)
+- **crm_leads** — leads/prospects (nome, telefone, email, etapa, temperatura, valor_negociado, motivo_perda, origem, etc.)
+- **crm_interacoes** — timeline (nota, ligação, WhatsApp, visita, proposta, email, sistema)
+- **crm_interesses** — preferências genéricas (marca, modelo, ano, valor, km)
+- **crm_agendamentos** — agendamentos (ligação, visita, test-ride, entrega, outro)
+
+### Etapas do funil
+1. **Novo** — lead recém-criado
+2. **Em contato** — abordagem inicial
+3. **Negociação** — cliente interessado
+4. **Proposta** — proposta enviada
+5. **Fechado** — venda registrada
+6. **Perdido** — lead descartado (motivo obrigatório)
+
+### Temperatura
+- 🔥 **Quente** — alta probabilidade de compra
+- 🌡️ **Morno** — interesse moderado
+- ❄️ **Frio** — baixa probabilidade
+
+### Páginas
+- **`/painel/crm.php`** — Kanban pipeline com drag & drop, filtros, importação
+- **`/painel/crm_lead.php?id=N`** — Ficha completa com timeline, agendamentos, sidebar
+- **`/painel/crm_actions.php`** — Endpoint AJAX (14 ações)
+
+### Permissões
+- **Gerente** — todos os leads, importa, configura integrações
+- **Vendedor** — seus leads + sem vendedor atribuído
+
+### Integração com vendas
+Ao registrar venda em `moto_mark_sold.php`:
+- Busca lead ativo com telefone do cliente OU com moto vendida
+- Move para "Fechado" automaticamente
+- Vincula via `venda_id`
+- Registra interação `sistema`
+- Falhas do CRM nunca afetam a venda (try/catch)
+
+### Configurações (painel/config.php, gerente)
+- **Meta Pixel ID** — rastreamento (Fase 2)
+- **Conversions API Token** — Meta CAPI (Fase 2)
+- **Chave Anthropic** — IA (Fase futura)
+- **Motivos de perda** — lista editável (JSON em DB)
+
+---
+
+## 9. Como DUPLICAR o sistema para outra empresa
 
 Passo a passo para uma nova loja (ex.: "Loja XYZ"):
 
