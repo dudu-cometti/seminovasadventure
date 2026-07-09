@@ -1,6 +1,7 @@
 <?php
 if (!isset($page_title)) $page_title = '';
 require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/pixel.php';
 
 // CSRF token generation
 if (!isset($_SESSION['csrf_token'])) {
@@ -14,6 +15,7 @@ $role      = $user['role'] ?? '';
 $isGerente = $isLogged && ($role === 'gerente');
 $canUsers  = function_exists('user_can') ? (user_can('users') || user_can('manage_users')) : false;
 $canConfig = function_exists('user_can') ? user_can('config') : false;
+$isPanel   = strpos($_SERVER['REQUEST_URI'] ?? '', '/painel/') !== false || strpos($_SERVER['REQUEST_URI'] ?? '', '/api/') !== false;
 
 // Pega config do marketplace (nome + logo) já carregada em config.php
 function _settings_lookup($pdo, $keys, $default = ''){
@@ -56,13 +58,25 @@ $inPainel = (strpos($_SERVER['SCRIPT_NAME'] ?? '', '/painel/') !== false);
 
 $avatarLetter = mb_strtoupper(mb_substr(trim($user['nome'] ?? 'U'), 0, 1, 'UTF-8'), 'UTF-8');
 
-// Badge CRM - leads novos
+// Badge CRM - leads novos + agendamentos atrasados
 $crmBadge = 0;
+$crmBadgeTitle = '';
 if ($isLogged && function_exists('crm_badge_novos')) {
   try {
     require_once __DIR__ . '/crm.php';
     ensure_crm_schema($pdo);
     $crmBadge = crm_badge_novos($pdo, $user);
+
+    // Adiciona agendamentos atrasados
+    $where = ($user['role'] === 'gerente') ? "1=1" : "ca.vendedor_id=?";
+    $params = ($user['role'] === 'gerente') ? [] : [$user['id']];
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM crm_agendamentos ca
+                           WHERE $where AND ca.status='pendente' AND ca.data_hora < NOW()");
+    $stmt->execute($params);
+    $atrasados = (int)$stmt->fetchColumn();
+
+    $crmBadge += $atrasados;
+    $crmBadgeTitle = "$crmBadge alertas: leads novos + agendamentos atrasados";
   } catch (Throwable $e) {}
 }
 ?>
@@ -79,7 +93,10 @@ if ($isLogged && function_exists('crm_badge_novos')) {
   <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 
   <link rel="icon" href="<?= base_url('favicon.ico') ?>" type="image/x-icon">
-  <link rel="stylesheet" href="<?= base_url('assets/style.css?v=2020') ?>">
+  <link rel="stylesheet" href="<?= base_url('assets/style.css?v=2022') ?>">
+  <?php if (!$isPanel && pixel_enabled()): ?>
+    <?= pixel_head_snippet() ?>
+  <?php endif; ?>
   <?php if ($isLogged): ?>
     <meta name="csrf-token" content="<?= htmlspecialchars($csrf_token) ?>">
   <?php endif; ?>
@@ -109,10 +126,10 @@ if ($isLogged && function_exists('crm_badge_novos')) {
         <a href="<?= base_url('index.php') ?>" class="<?= $current === 'index.php' ? 'active' : '' ?>">Marketplace</a>
         <a href="<?= base_url('painel/dashboard.php') ?>" class="<?= $current === 'dashboard.php' ? 'active' : '' ?>">Dashboard</a>
         <a href="<?= base_url('painel/motos.php') ?>" class="<?= ($current === 'motos.php' || $current === 'moto_form.php') ? 'active' : '' ?>">Motos</a>
-        <a href="<?= base_url('painel/crm.php') ?>" class="<?= ($current === 'crm.php' || $current === 'crm_lead.php') ? 'active' : '' ?>" style="position: relative;">
+        <a href="<?= base_url('painel/crm.php') ?>" class="<?= ($current === 'crm.php' || $current === 'crm_lead.php' || $current === 'crm_agenda.php') ? 'active' : '' ?>" style="position: relative;" title="<?= htmlspecialchars($crmBadgeTitle) ?>">
           CRM
           <?php if ($crmBadge > 0): ?>
-            <span style="position: absolute; top: -2px; right: -8px; background: var(--red); color: white; font-size: 10px; font-weight: 700; padding: 2px 5px; border-radius: 10px; min-width: 16px; text-align: center;">
+            <span style="position: absolute; top: -2px; right: -8px; background: var(--red); color: white; font-size: 10px; font-weight: 700; padding: 2px 5px; border-radius: 10px; min-width: 16px; text-align: center;" title="<?= htmlspecialchars($crmBadgeTitle) ?>">
               <?= $crmBadge ?>
             </span>
           <?php endif; ?>

@@ -50,6 +50,25 @@ $stmt = $pdo->prepare($query);
 $stmt->execute($params);
 $todos_leads = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+// Agendamentos pendentes de todos os leads visíveis (para o ícone no card)
+$lead_ids = array_map(fn($l) => $l['id'], $todos_leads);
+$agendamentos_info = []; // lead_id => ['hoje' => count, 'atrasado' => count]
+if (!empty($lead_ids)) {
+  $placeholders = implode(',', array_fill(0, count($lead_ids), '?'));
+  $stmtAg = $pdo->prepare("SELECT lead_id,
+    SUM(CASE WHEN DATE(data_hora)=CURDATE() THEN 1 ELSE 0 END) as hoje,
+    SUM(CASE WHEN data_hora<NOW() THEN 1 ELSE 0 END) as atrasado
+    FROM crm_agendamentos WHERE lead_id IN ($placeholders) AND status='pendente'
+    GROUP BY lead_id");
+  $stmtAg->execute($lead_ids);
+  foreach ($stmtAg as $row) {
+    $agendamentos_info[$row['lead_id']] = [
+      'hoje' => (int)$row['hoje'],
+      'atrasado' => (int)$row['atrasado']
+    ];
+  }
+}
+
 $leads_por_etapa = [];
 foreach ($etapas as $etapa_key => $_) {
   $leads_por_etapa[$etapa_key] = array_filter($todos_leads, fn($l) => $l['etapa'] === $etapa_key);
@@ -320,6 +339,16 @@ function importarVendas() {
                         <?= htmlspecialchars(crm_formata_telefone($lead['telefone'])) ?>
                       </div>
                     </div>
+                    <?php if (!empty($agendamentos_info[$lead['id']])): ?>
+                      <?php
+                        $ag = $agendamentos_info[$lead['id']];
+                        $icon_color = $ag['atrasado'] > 0 ? 'var(--red)' : 'var(--brand)';
+                        $title = ($ag['atrasado'] > 0 ? $ag['atrasado'] . ' atrasados · ' : '') . $ag['hoje'] . ' hoje';
+                      ?>
+                      <div style="width: 20px; height: 20px; font-size: 12px; display: flex; align-items: center; justify-content: center; color: <?= $icon_color ?>;" title="<?= $title ?>">
+                        🕐
+                      </div>
+                    <?php endif; ?>
                   </div>
 
                   <?php if ($lead['moto_titulo']): ?>

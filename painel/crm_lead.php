@@ -329,6 +329,9 @@ include __DIR__ . '/../inc/header.php';
               </div>
             <?php endforeach; ?>
           </div>
+          <div style="text-align: center; padding-top: var(--space-3); border-top: 1px solid var(--line); margin-top: var(--space-3);">
+            <a href="<?= base_url('painel/crm_agenda.php') ?>" style="font-size: 12px; color: var(--link);">Ver agenda completa →</a>
+          </div>
         </div>
 
         <!-- Dados -->

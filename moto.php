@@ -383,7 +383,7 @@ $sugestoes = $stmtSug->fetchAll();
     </div>
 
     <aside class="detail-aside">
-      <div class="price-card">
+      <div class="price-card" data-moto-id="<?= (int)$moto['id'] ?>" data-moto-price="<?= (float)($moto['valor'] ?? 0) ?>">
         <span class="badge <?= $moto['status'] === 'reservada' ? 'badge-warning' : 'badge-success' ?> mb-3"><?= $moto['status'] === 'reservada' ? 'Reservada' : 'Disponível' ?></span>
         <?php if (!empty($moto['condicao'])): ?>
           <span class="badge badge-info mb-3"><?= $moto['condicao'] === 'nova' ? '0 km · Nova' : 'Seminova' ?></span>
@@ -421,7 +421,7 @@ $sugestoes = $stmtSug->fetchAll();
           <div class="moto-spec"><b>Cor</b><?= htmlspecialchars($moto['cor']) ?></div>
         </div>
 
-        <a class="btn btn-whatsapp btn-block btn-lg" data-wa="1" data-moto-id="<?= (int)$moto['id'] ?>" target="_blank" rel="noopener" href="<?= htmlspecialchars($wa_link) ?>">
+        <a class="btn btn-whatsapp btn-block btn-lg" data-wa="1" data-moto-id="<?= (int)$moto['id'] ?>" data-moto-titulo="<?= htmlspecialchars($moto['titulo'] ?? '') ?>" target="_blank" rel="noopener" href="<?= htmlspecialchars($wa_link) ?>">
           <svg fill="currentColor" viewBox="0 0 24 24" width="20" height="20"><path d="M17.5 14.4c-.3-.1-1.6-.8-1.9-.9-.3-.1-.5-.1-.7.1s-.8.9-1 1.1c-.2.2-.4.2-.7.1-1.6-.8-2.7-1.4-3.7-3.2-.3-.5.3-.5.8-1.5.1-.2 0-.3 0-.5s-.7-1.7-1-2.3c-.3-.6-.5-.5-.7-.5s-.4 0-.6 0c-.2 0-.6.1-.9.4-.3.3-1.2 1.2-1.2 2.9s1.2 3.4 1.4 3.6c.2.2 2.4 3.7 6 5 .8.4 1.5.6 2 .8.8.3 1.6.2 2.2.1.7-.1 2-.8 2.3-1.6.3-.8.3-1.5.2-1.6-.1-.1-.3-.2-.5-.3z"/><path d="M21 11.6c0 5.3-4.3 9.6-9.6 9.6-1.7 0-3.3-.4-4.7-1.2L2 21l1.1-4.5c-.9-1.5-1.5-3.2-1.5-5 0-5.3 4.3-9.6 9.6-9.6S21 6.3 21 11.6zm-9.6-7.8c-4.3 0-7.8 3.5-7.8 7.8 0 1.6.5 3.1 1.4 4.4l-.7 2.7 2.7-.7c1.2.8 2.7 1.2 4.3 1.2 4.3 0 7.8-3.5 7.8-7.8s-3.4-7.6-7.7-7.6z"/></svg>
           Chamar no WhatsApp
         </a>
@@ -571,6 +571,21 @@ $sugestoes = $stmtSug->fetchAll();
 
   // Track view
   if (window.trackMotoView) window.trackMotoView(<?= (int)$moto['id'] ?>);
+
+  // Meta Pixel ViewContent
+  if (window.fbq) {
+    const priceCard = document.querySelector('.price-card[data-moto-id]');
+    if (priceCard) {
+      const motoId = priceCard.getAttribute('data-moto-id');
+      const price = parseFloat(priceCard.getAttribute('data-moto-price')) || 0;
+      window.fbq('track', 'ViewContent', {
+        content_ids: [motoId],
+        content_type: 'vehicle',
+        value: price,
+        currency: 'BRL'
+      });
+    }
+  }
 })();
 </script>
 

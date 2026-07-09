@@ -3,6 +3,7 @@ require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../inc/auth.php';
 require_once __DIR__ . '/../inc/moto_fields.php';
 require_once __DIR__ . '/../inc/crm.php';
+require_once __DIR__ . '/../inc/pixel.php';
 require_login();
 
 if (!user_can('edit')) {
@@ -70,6 +71,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->commit();
 
             $sucesso = 'Venda registrada com sucesso!';
+
+            // CAPI Purchase event (falha não quebra a venda)
+            try {
+              $user_data = [];
+              if (!empty($clienteNome)) {
+                $parts = explode(' ', trim($clienteNome));
+                if (count($parts) >= 1) {
+                  $user_data['fn'] = hash_pii($parts[0]);
+                }
+              }
+              if (!empty($clienteTel)) {
+                $user_data['ph'] = hash_pii(normalize_phone_for_capi($clienteTel));
+              }
+              if (!empty($clienteEmail)) {
+                $user_data['em'] = hash_pii($clienteEmail);
+              }
+              if (!empty($_SERVER['REMOTE_ADDR'])) {
+                $user_data['client_ip_address'] = $_SERVER['REMOTE_ADDR'];
+              }
+              if (!empty($_SERVER['HTTP_USER_AGENT'])) {
+                $user_data['client_user_agent'] = $_SERVER['HTTP_USER_AGENT'];
+              }
+
+              $custom_data = [
+                'value' => $valor_venda,
+                'currency' => 'BRL',
+                'content_ids' => [(string)$id]
+              ];
+
+              capi_send($pdo, 'Purchase', $user_data, $custom_data, pixel_event_id(), $_SERVER['HTTP_HOST'] ?? 'unknown');
+            } catch (Throwable $pixel_err) {}
 
             // Integração CRM: fecha o lead correspondente (falha não quebra a venda)
             try {

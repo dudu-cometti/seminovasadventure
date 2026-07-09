@@ -44,6 +44,7 @@ $cidadeLoja   = setting_get($pdo, 'marketplace_cidade', 'São Silvano - ES');
 $placaToken   = setting_get($pdo, 'placa_api_token', '');
 $crm_pixel_id = setting_get($pdo, 'crm_pixel_id', '');
 $crm_capi_token = setting_get($pdo, 'crm_capi_token', '');
+$crm_capi_test_code = setting_get($pdo, 'crm_capi_test_code', '');
 $crm_anthropic_key = setting_get($pdo, 'crm_anthropic_key', '');
 $crm_motivos_perda = setting_get($pdo, 'crm_motivos_perda', '["Preço","Comprou em outra loja","Sem crédito/financiamento","Desistiu","Sem retorno","Trocou de ideia","Outro"]');
 
@@ -140,6 +141,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['crm_capi_token'])) {
       $crm_capi_token = trim($_POST['crm_capi_token']);
       setting_set($pdo, 'crm_capi_token', $crm_capi_token);
+    }
+    if (isset($_POST['crm_capi_test_code'])) {
+      $crm_capi_test_code = trim($_POST['crm_capi_test_code']);
+      setting_set($pdo, 'crm_capi_test_code', $crm_capi_test_code);
     }
     if (isset($_POST['crm_anthropic_key'])) {
       $crm_anthropic_key = trim($_POST['crm_anthropic_key']);
@@ -263,6 +268,21 @@ include __DIR__ . '/../inc/header.php';
           <label style="font-size:15px;font-weight:800;">CRM / Integrações</label>
           <p class="text-muted" style="font-size:13px;margin-bottom:var(--space-4);">Configure integrações externas para o CRM.</p>
 
+          <!-- Diagnóstico Pixel/CAPI -->
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:var(--space-4);font-size:13px;">
+            <div style="margin-bottom:6px;"><strong>Status:</strong></div>
+            <div style="margin-bottom:4px;">
+              <?php
+                $pixel_ok = !empty($crm_pixel_id);
+                $capi_ok = !empty($crm_capi_token);
+                $pixel_icon = $pixel_ok ? '✓' : '○';
+                $capi_icon = $capi_ok ? '✓' : '○';
+                echo "Pixel: <span style='color:var(--text-muted)'>{$pixel_icon}</span> " . ($pixel_ok ? 'configurado' : 'não configurado');
+                echo " · CAPI: <span style='color:var(--text-muted)'>{$capi_icon}</span> " . ($capi_ok ? 'token ok' : 'ausente');
+              ?>
+            </div>
+          </div>
+
           <div class="form-grid form-grid-1">
             <div class="field mb-4">
               <label>Meta Pixel ID <span class="text-muted" style="font-weight:500;">(opcional)</span></label>
@@ -274,6 +294,12 @@ include __DIR__ . '/../inc/header.php';
               <label>Conversions API Token <span class="text-muted" style="font-weight:500;">(opcional)</span></label>
               <input type="password" name="crm_capi_token" placeholder="••••••••" value="<?= htmlspecialchars($crm_capi_token) ?>" autocomplete="off">
               <small>Token da Meta Conversions API. Será implementado na Fase 2.</small>
+            </div>
+
+            <div class="field mb-4">
+              <label>CAPI Test Event Code <span class="text-muted" style="font-weight:500;">(opcional)</span></label>
+              <input type="text" name="crm_capi_test_code" placeholder="test_code..." value="<?= htmlspecialchars($crm_capi_test_code) ?>" autocomplete="off">
+              <small>Código de teste para eventos (Gerenciador de Eventos da Meta). Deixe vazio em produção.</small>
             </div>
 
             <div class="field mb-4">
@@ -293,10 +319,17 @@ include __DIR__ . '/../inc/header.php';
           </div>
         </div>
 
-        <button class="btn btn-primary btn-lg" type="submit">
-          <svg fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg>
-          Salvar configurações
-        </button>
+        <div style="display:flex;gap:var(--space-2);flex-wrap:wrap;">
+          <button class="btn btn-primary btn-lg" type="submit">
+            <svg fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg>
+            Salvar configurações
+          </button>
+          <?php if ($isGerente && !empty($crm_capi_token)): ?>
+          <button class="btn btn-outline btn-lg" type="button" id="btnTestePixel" onclick="testarPixelEvent()">
+            Enviar evento de teste
+          </button>
+          <?php endif; ?>
+        </div>
       </div>
     </form>
   </div>
@@ -311,6 +344,30 @@ include __DIR__ . '/../inc/header.php';
     chk.addEventListener('change', sync);
     sync();
   })();
+
+  window.testarPixelEvent = async function() {
+    const btn = document.getElementById('btnTestePixel');
+    if (!btn) return;
+    btn.disabled = true;
+    const orig = btn.textContent;
+    btn.textContent = 'Enviando...';
+
+    try {
+      const resp = await fetch('<?= base_url('painel/api_test_pixel.php') ?>', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || '' },
+        body: JSON.stringify({})
+      });
+      const data = await resp.json();
+      const msg = data.ok ? '✓ Evento enviado! Verifique o Gerenciador de Eventos.' : ('✗ ' + (data.msg || 'Erro ao enviar'));
+      alert(msg);
+    } catch(e) {
+      alert('✗ Erro: ' + e.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = orig;
+    }
+  };
 </script>
 
 <?php include __DIR__ . '/../inc/footer.php'; ?>

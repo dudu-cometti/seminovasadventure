@@ -6,18 +6,27 @@ require_login();
 
 header('Content-Type: application/json; charset=utf-8');
 
-// CSRF validation
-$csrf = $_POST['_csrf'] ?? '';
-if ($csrf !== ($_SESSION['csrf_token'] ?? '')) {
-  http_response_code(403);
-  echo json_encode(['ok' => false, 'msg' => 'CSRF token inválido']);
-  exit;
+// Parse input (JSON ou POST)
+$input = $_POST;
+if (empty($input) && $_SERVER['CONTENT_TYPE'] === 'application/json') {
+  $input = json_decode(file_get_contents('php://input'), true) ?: [];
+}
+
+// CSRF validation (skip para algumas ações que não modificam)
+$acao = $input['acao'] ?? '';
+$skipCsrf = in_array($acao, ['buscar_lead']);
+if (!$skipCsrf) {
+  $csrf = $input['_csrf'] ?? '';
+  if ($csrf !== ($_SESSION['csrf_token'] ?? '')) {
+    http_response_code(403);
+    echo json_encode(['ok' => false, 'msg' => 'CSRF token inválido']);
+    exit;
+  }
 }
 
 ensure_crm_schema($pdo);
 
 $resp = ['ok' => false, 'msg' => 'Ação inválida'];
-$acao = $_POST['acao'] ?? '';
 
 try {
   switch ($acao) {
@@ -322,6 +331,118 @@ try {
       $del->execute([$lead_id]);
 
       $resp = ['ok' => true, 'msg' => 'Lead excluído'];
+      break;
+
+    case 'buscar_lead':
+      if (!user_can('view')) throw new Exception('Sem permissão');
+      $q = trim($input['q'] ?? '');
+      if (strlen($q) < 2) throw new Exception('Mínimo 2 caracteres');
+
+      $user = current_user();
+      $where = "nome LIKE ? OR telefone LIKE ?";
+      $params = ['%' . $q . '%', '%' . preg_replace('/\D/', '', $q) . '%'];
+
+      if ($user['role'] !== 'gerente') {
+        $where .= " AND vendedor_id = ?";
+        $params[] = $user['id'];
+      }
+
+      $stmt = $pdo->prepare("SELECT id, nome, telefone FROM crm_leads WHERE {$where} LIMIT 10");
+      $stmt->execute($params);
+      $leads = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+      $resp = ['ok' => true, 'leads' => $leads];
+      break;
+
+    case 'criar_agendamento':
+      if (!user_can('edit')) throw new Exception('Sem permissão');
+      $lead_id = (int)($input['lead_id'] ?? 0);
+      $tipo = $input['tipo'] ?? '';
+      $data_hora = $input['data_hora'] ?? '';
+      $observacao = $input['observacao'] ?? '';
+      $vendedor_id = !empty($input['vendedor_id']) ? (int)$input['vendedor_id'] : null;
+
+      if ($lead_id <= 0) throw new Exception('Lead inválido');
+      if (empty($tipo) || !in_array($tipo, ['ligacao','visita','test_ride','entrega','outro'])) throw new Exception('Tipo inválido');
+      if (empty($data_hora)) throw new Exception('Data e hora obrigatórias');
+
+      $lead = crm_lead_get($pdo, $lead_id);
+      if (!$lead) throw new Exception('Lead não encontrado');
+
+      $user = current_user();
+      if (!crm_pode_ver_lead($user, $lead)) throw new Exception('Sem acesso a este lead');
+      if ($user['role'] !== 'gerente' && $vendedor_id && $vendedor_id !== $user['id']) {
+        throw new Exception('Só o gerente pode atribuir agendamentos a outros vendedores');
+      }
+
+      if (!$vendedor_id && $user['role'] === 'vendedor') {
+        $vendedor_id = $user['id'];
+      }
+
+      $stmt = $pdo->prepare("INSERT INTO crm_agendamentos (lead_id, tipo, data_hora, observacao, vendedor_id, status, created_at)
+                             VALUES (?, ?, ?, ?, ?, 'pendente', NOW())");
+      $stmt->execute([$lead_id, $tipo, $data_hora, $observacao, $vendedor_id]);
+
+      $resp = ['ok' => true, 'msg' => 'Agendamento criado'];
+      break;
+
+    case 'status_agendamento':
+      if (!user_can('edit')) throw new Exception('Sem permissão');
+      $ag_id = (int)($input['agendamento_id'] ?? 0);
+      $status = $input['status'] ?? '';
+      $obs_realizado = trim($input['observacao_realizado'] ?? '');
+
+      if ($ag_id <= 0) throw new Exception('Agendamento inválido');
+      if (!in_array($status, ['realizado','cancelado'])) throw new Exception('Status inválido');
+
+      $stmt = $pdo->prepare("SELECT ca.*, cl.id AS lead_id FROM crm_agendamentos ca
+                             JOIN crm_leads cl ON ca.lead_id = cl.id WHERE ca.id=?");
+      $stmt->execute([$ag_id]);
+      $ag = $stmt->fetch(PDO::FETCH_ASSOC);
+      if (!$ag) throw new Exception('Agendamento não encontrado');
+
+      $user = current_user();
+      if ($user['role'] !== 'gerente' && $ag['vendedor_id'] != $user['id']) {
+        throw new Exception('Sem acesso a este agendamento');
+      }
+
+      $pdo->prepare("UPDATE crm_agendamentos SET status=?, updated_at=NOW() WHERE id=?")->execute([$status, $ag_id]);
+
+      if ($status === 'realizado' && !empty($obs_realizado)) {
+        $tipo_interacao = match($ag['tipo']) {
+          'ligacao' => 'ligacao',
+          'visita' => 'visita',
+          'test_ride' => 'test_ride',
+          'entrega' => 'entrega',
+          default => 'interacao'
+        };
+        crm_registrar_interacao($pdo, $ag['lead_id'], $tipo_interacao, $obs_realizado);
+      }
+
+      $resp = ['ok' => true, 'msg' => 'Agendamento atualizado'];
+      break;
+
+    case 'reagendar_agendamento':
+      if (!user_can('edit')) throw new Exception('Sem permissão');
+      $ag_id = (int)($input['agendamento_id'] ?? 0);
+      $data_hora = $input['data_hora'] ?? '';
+
+      if ($ag_id <= 0) throw new Exception('Agendamento inválido');
+      if (empty($data_hora)) throw new Exception('Data e hora obrigatórias');
+
+      $stmt = $pdo->prepare("SELECT vendedor_id FROM crm_agendamentos WHERE id=?");
+      $stmt->execute([$ag_id]);
+      $ag = $stmt->fetch(PDO::FETCH_ASSOC);
+      if (!$ag) throw new Exception('Agendamento não encontrado');
+
+      $user = current_user();
+      if ($user['role'] !== 'gerente' && $ag['vendedor_id'] != $user['id']) {
+        throw new Exception('Sem acesso a este agendamento');
+      }
+
+      $pdo->prepare("UPDATE crm_agendamentos SET data_hora=?, updated_at=NOW() WHERE id=?")->execute([$data_hora, $ag_id]);
+
+      $resp = ['ok' => true, 'msg' => 'Agendamento reagendado'];
       break;
   }
 } catch (Exception $e) {

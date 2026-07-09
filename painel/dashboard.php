@@ -82,6 +82,8 @@ $serieRaw = $stmtSerie->fetchAll();
 $crm_novos = 0;
 $crm_negociacao = 0;
 $crm_fechados_mes = 0;
+$agendamentos_hoje = 0;
+$agendamentos_atrasados = 0;
 try {
   ensure_crm_schema($pdo);
   $crm_novos = (int)$pdo->query("SELECT COUNT(*) FROM crm_leads WHERE etapa='novo'")->fetchColumn();
@@ -89,6 +91,10 @@ try {
   $stmtCRM = $pdo->prepare("SELECT COUNT(*) FROM crm_leads WHERE etapa='fechado' AND created_at BETWEEN ? AND ?");
   $stmtCRM->execute([$deDT, $ateDT]);
   $crm_fechados_mes = (int)$stmtCRM->fetchColumn();
+
+  // Agendamentos
+  $agendamentos_hoje = (int)$pdo->query("SELECT COUNT(*) FROM crm_agendamentos WHERE DATE(data_hora)=CURDATE() AND status='pendente'")->fetchColumn();
+  $agendamentos_atrasados = (int)$pdo->query("SELECT COUNT(*) FROM crm_agendamentos WHERE data_hora<NOW() AND status='pendente'")->fetchColumn();
 } catch (Throwable $e) {}
 
 // Monta série completa com zero nos dias sem venda
@@ -222,6 +228,9 @@ include __DIR__ . '/../inc/header.php';
           <div style="font-size:12px;color:var(--muted);font-weight:600;margin-bottom:4px;">Fechados (<?= htmlspecialchars($periodLabel) ?>)</div>
           <div style="font-size:28px;font-weight:900;color:var(--ok);"><?= $crm_fechados_mes ?></div>
         </div>
+      </div>
+      <div style="border-top:1px solid var(--border);padding-top:var(--space-3);margin-top:var(--space-3);font-size:13px;color:var(--text-muted);">
+        <a href="<?= base_url('painel/crm_agenda.php') ?>" style="color:inherit;text-decoration:none;">📅 Agendamentos hoje: <strong><?= $agendamentos_hoje ?></strong> <?php if ($agendamentos_atrasados > 0): ?><span style="color:var(--red);">(<?= $agendamentos_atrasados ?> atrasados)</span><?php endif; ?></a>
       </div>
     </div>
 
